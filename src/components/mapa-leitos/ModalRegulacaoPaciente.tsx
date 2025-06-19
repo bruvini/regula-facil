@@ -73,7 +73,7 @@ const ModalRegulacaoPaciente = ({ aberto, onFechar, leitoId, onRegular }: ModalR
                     if (pacienteData.setorAtual) {
                       const setorDoc = await getDoc(pacienteData.setorAtual);
                       if (setorDoc.exists()) {
-                        const setorDocData = setorDoc.data();
+                        const setorDocData = setorDoc.data() as any;
                         pacienteData.setorAtual = { 
                           id: setorDoc.id, 
                           sigla: setorDocData.sigla || '',
