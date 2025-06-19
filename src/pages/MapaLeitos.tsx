@@ -3,13 +3,17 @@ import { useState, useMemo } from 'react';
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMapaLeitos } from '@/hooks/useMapaLeitos';
-import FiltrosMapaLeitos from '@/components/mapa-leitos/FiltrosMapaLeitos';
+import IndicadoresMapaLeitos from '@/components/mapa-leitos/IndicadoresMapaLeitos';
+import FiltrosCompactos from '@/components/mapa-leitos/FiltrosCompactos';
+import ModalGerenciamento from '@/components/mapa-leitos/ModalGerenciamento';
 import CardLeito from '@/components/mapa-leitos/CardLeito';
 import { LeitoWithData } from '@/types/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const MapaLeitos = () => {
-  const { leitos, setores, loading, error, atualizarStatusLeito } = useMapaLeitos();
+  const { leitos, setores, loading, error, atualizarStatusLeito, adicionarSetor, adicionarLeito } = useMapaLeitos();
   const { toast } = useToast();
   
   const [filtros, setFiltros] = useState({
@@ -17,8 +21,12 @@ const MapaLeitos = () => {
     setorSelecionado: 'todos',
     statusSelecionados: [] as string[],
     tipoLeito: 'todos',
-    apenasPC: false
+    apenasPC: false,
+    isolamento: 'todos',
+    tempoMinimoStatus: 0
   });
+
+  const [modalGerenciamentoAberto, setModalGerenciamentoAberto] = useState(false);
 
   // Filtrar leitos
   const leitosFiltrados = useMemo(() => {
@@ -56,6 +64,23 @@ const MapaLeitos = () => {
         return false;
       }
 
+      // Filtro de isolamento
+      if (filtros.isolamento === 'com' &&  leito.tipo !== 'isolamento') {
+        return false;
+      }
+      if (filtros.isolamento === 'sem' && leito.tipo === 'isolamento') {
+        return false;
+      }
+
+      // Filtro de tempo mínimo no status
+      if (filtros.tempoMinimoStatus > 0) {
+        const tempoAtualMs = Date.now() - leito.dataUltimaAtualizacaoStatus.toMillis();
+        const tempoAtualMinutos = tempoAtualMs / (1000 * 60);
+        if (tempoAtualMinutos < filtros.tempoMinimoStatus) {
+          return false;
+        }
+      }
+
       return true;
     });
   }, [leitos, filtros]);
@@ -82,7 +107,6 @@ const MapaLeitos = () => {
     try {
       switch (acao) {
         case 'regular':
-          // TODO: Implementar modal de regulação
           toast({
             title: "Funcionalidade em desenvolvimento",
             description: "A regulação de pacientes será implementada em breve."
@@ -106,7 +130,6 @@ const MapaLeitos = () => {
           break;
         
         case 'remanejar':
-          // TODO: Implementar modal de remanejamento
           toast({
             title: "Funcionalidade em desenvolvimento",
             description: "O remanejamento será implementado em breve."
@@ -138,7 +161,6 @@ const MapaLeitos = () => {
           break;
         
         case 'detalhes':
-          // TODO: Implementar modal de detalhes
           toast({
             title: "Funcionalidade em desenvolvimento",
             description: "Os detalhes do paciente serão exibidos em breve."
@@ -146,7 +168,6 @@ const MapaLeitos = () => {
           break;
         
         case 'editarMotivo':
-          // TODO: Implementar modal de edição de motivo
           toast({
             title: "Funcionalidade em desenvolvimento",
             description: "A edição de motivo será implementada em breve."
@@ -166,17 +187,11 @@ const MapaLeitos = () => {
     }
   };
 
-  const handleGerenciarSetores = () => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "O gerenciamento de setores será implementado em breve."
-    });
-  };
-
-  const handleGerenciarLeitos = () => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "O gerenciamento de leitos será implementado em breve."
+  const handleAdicionarLeitoComRef = async (leitoData: any) => {
+    const setorRef = doc(db, 'setoresRegulaFacil', leitoData.setor.path.split('/')[1]);
+    await adicionarLeito({
+      ...leitoData,
+      setor: setorRef
     });
   };
 
@@ -215,12 +230,22 @@ const MapaLeitos = () => {
           </div>
         </div>
 
-        <FiltrosMapaLeitos
+        <IndicadoresMapaLeitos leitos={leitosFiltrados} />
+
+        <FiltrosCompactos
           setores={setores}
           filtros={filtros}
           onFiltroChange={setFiltros}
-          onGerenciarSetores={handleGerenciarSetores}
-          onGerenciarLeitos={handleGerenciarLeitos}
+          onAbrirModal={() => setModalGerenciamentoAberto(true)}
+        />
+
+        <ModalGerenciamento
+          aberto={modalGerenciamentoAberto}
+          onFechar={() => setModalGerenciamentoAberto(false)}
+          setores={setores}
+          leitos={leitos}
+          onAdicionarSetor={adicionarSetor}
+          onAdicionarLeito={handleAdicionarLeitoComRef}
         />
 
         {leitosPorSetor.length === 0 ? (
