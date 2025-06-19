@@ -18,6 +18,11 @@ interface Paciente {
   regulacaoAtual?: any;
 }
 
+interface Regulacao {
+  status: string;
+  dataInicio?: any;
+}
+
 interface ModalRegulacaoPacienteProps {
   aberto: boolean;
   onFechar: () => void;
@@ -48,8 +53,11 @@ const ModalRegulacaoPaciente = ({ aberto, onFechar, leitoId, onRegular }: ModalR
               // Check if patient has active regulation with status 'aguardando'
               if (pacienteData.regulacaoAtual) {
                 const regulacaoDoc = await getDoc(pacienteData.regulacaoAtual);
-                if (regulacaoDoc.exists() && regulacaoDoc.data().status === 'aguardando') {
-                  return pacienteData;
+                if (regulacaoDoc.exists()) {
+                  const regulacaoData = regulacaoDoc.data() as Regulacao;
+                  if (regulacaoData.status === 'aguardando') {
+                    return pacienteData;
+                  }
                 }
               }
               return null;
