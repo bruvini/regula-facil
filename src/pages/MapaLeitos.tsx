@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react';
 import Layout from "@/components/Layout";
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,11 +10,19 @@ import GridLeitosPorSetor from '@/components/mapa-leitos/GridLeitosPorSetor';
 import ModalGerenciamento from '@/components/mapa-leitos/ModalGerenciamento';
 import { LeitoWithData } from '@/types/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 const MapaLeitos = () => {
-  const { leitos, setores, loading, error, atualizarStatusLeito, adicionarSetor, adicionarLeito } = useMapaLeitos();
+  const { 
+    leitos, 
+    setores, 
+    isolamentoTipos,
+    loading, 
+    error, 
+    atualizarStatusLeito, 
+    adicionarSetor, 
+    editarSetor,
+    adicionarLeitosEmLote 
+  } = useMapaLeitos();
   const { toast } = useToast();
   
   const [filtros, setFiltros] = useState({
@@ -67,11 +76,20 @@ const MapaLeitos = () => {
       }
 
       // Filtro de isolamento
-      if (filtros.isolamento === 'com' &&  leito.tipo !== 'isolamento') {
-        return false;
-      }
-      if (filtros.isolamento === 'sem' && leito.tipo === 'isolamento') {
-        return false;
+      if (filtros.isolamento !== 'todos') {
+        if (filtros.isolamento === 'sem') {
+          if (leito.pacienteData?.isolamentosAtivos && leito.pacienteData.isolamentosAtivos.length > 0) {
+            return false;
+          }
+        } else {
+          // Filtrar por tipo específico de isolamento
+          const temIsolamento = leito.pacienteData?.isolamentosAtivos?.some(iso => 
+            iso.tipo === filtros.isolamento
+          );
+          if (!temIsolamento) {
+            return false;
+          }
+        }
       }
 
       // Filtro de tempo mínimo no status
@@ -194,14 +212,6 @@ const MapaLeitos = () => {
     }
   };
 
-  const handleAdicionarLeitoComRef = async (leitoData: any) => {
-    const setorRef = doc(db, 'setoresRegulaFacil', leitoData.setor.path.split('/')[1]);
-    await adicionarLeito({
-      ...leitoData,
-      setor: setorRef
-    });
-  };
-
   if (loading) {
     return (
       <Layout>
@@ -244,6 +254,9 @@ const MapaLeitos = () => {
             <FiltrosLeitos
               busca={filtros.busca}
               onBuscaChange={(busca) => setFiltros({ ...filtros, busca })}
+              setorSelecionado={filtros.setorSelecionado}
+              onSetorChange={(setor) => setFiltros({ ...filtros, setorSelecionado: setor })}
+              setores={setores}
               filtrosAvancadosAbertos={filtrosAvancadosAbertos}
               onToggleFiltrosAvancados={() => setFiltrosAvancadosAbertos(!filtrosAvancadosAbertos)}
               onAbrirModal={() => setModalGerenciamentoAberto(true)}
@@ -251,7 +264,7 @@ const MapaLeitos = () => {
 
             <FiltrosAvancados
               aberto={filtrosAvancadosAbertos}
-              setores={setores}
+              isolamentoTipos={isolamentoTipos}
               filtros={filtros}
               onFiltroChange={setFiltros}
             />
@@ -264,7 +277,8 @@ const MapaLeitos = () => {
           setores={setores}
           leitos={leitos}
           onAdicionarSetor={adicionarSetor}
-          onAdicionarLeito={handleAdicionarLeitoComRef}
+          onEditarSetor={editarSetor}
+          onAdicionarLeitosLote={adicionarLeitosEmLote}
         />
 
         <GridLeitosPorSetor

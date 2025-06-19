@@ -1,11 +1,16 @@
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { Setor } from '@/types/firestore';
 
 interface FiltrosLeitosProps {
   busca: string;
   onBuscaChange: (busca: string) => void;
+  setorSelecionado: string;
+  onSetorChange: (setor: string) => void;
+  setores: Setor[];
   filtrosAvancadosAbertos: boolean;
   onToggleFiltrosAvancados: () => void;
   onAbrirModal: () => void;
@@ -14,6 +19,9 @@ interface FiltrosLeitosProps {
 const FiltrosLeitos = ({
   busca,
   onBuscaChange,
+  setorSelecionado,
+  onSetorChange,
+  setores,
   filtrosAvancadosAbertos,
   onToggleFiltrosAvancados,
   onAbrirModal
@@ -28,6 +36,22 @@ const FiltrosLeitos = ({
           onChange={(e) => onBuscaChange(e.target.value)}
           className="pl-10"
         />
+      </div>
+
+      <div className="w-full lg:w-64">
+        <Select value={setorSelecionado} onValueChange={onSetorChange}>
+          <SelectTrigger>
+            <SelectValue placeholder="Todos os setores" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os setores</SelectItem>
+            {setores.map((setor) => (
+              <SelectItem key={setor.id} value={setor.id}>
+                {setor.sigla} - {setor.nomeCompleto}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex gap-2">

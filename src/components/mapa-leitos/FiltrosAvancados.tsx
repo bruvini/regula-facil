@@ -3,14 +3,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Setor } from '@/types/firestore';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+
+interface IsolamentoTipo {
+  id: string;
+  tipo: string;
+}
 
 interface FiltrosAvancadosProps {
   aberto: boolean;
-  setores: Setor[];
+  isolamentoTipos: IsolamentoTipo[];
   filtros: {
-    setorSelecionado: string;
     statusSelecionados: string[];
     tipoLeito: string;
     apenasPC: boolean;
@@ -30,7 +33,7 @@ const statusOptions = [
   { value: 'mecânica', label: 'Mecânica', color: 'bg-yellow-500' }
 ];
 
-const FiltrosAvancados = ({ aberto, setores, filtros, onFiltroChange }: FiltrosAvancadosProps) => {
+const FiltrosAvancados = ({ aberto, isolamentoTipos, filtros, onFiltroChange }: FiltrosAvancadosProps) => {
   const handleStatusToggle = (status: string) => {
     const novosStatus = filtros.statusSelecionados.includes(status)
       ? filtros.statusSelecionados.filter(s => s !== status)
@@ -44,23 +47,6 @@ const FiltrosAvancados = ({ aberto, setores, filtros, onFiltroChange }: FiltrosA
       <CollapsibleContent className="space-y-4 animate-accordion-down">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-2">
-            <Label>Setor</Label>
-            <Select value={filtros.setorSelecionado} onValueChange={(value) => onFiltroChange({ ...filtros, setorSelecionado: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos os setores" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os setores</SelectItem>
-                {setores.map((setor) => (
-                  <SelectItem key={setor.id} value={setor.id}>
-                    {setor.sigla} - {setor.nomeCompleto}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label>Sexo do Paciente</Label>
             <Select value={filtros.sexoPaciente} onValueChange={(value) => onFiltroChange({ ...filtros, sexoPaciente: value })}>
               <SelectTrigger>
@@ -70,6 +56,24 @@ const FiltrosAvancados = ({ aberto, setores, filtros, onFiltroChange }: FiltrosA
                 <SelectItem value="todos">Todos</SelectItem>
                 <SelectItem value="M">Masculino</SelectItem>
                 <SelectItem value="F">Feminino</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Isolamento</Label>
+            <Select value={filtros.isolamento} onValueChange={(value) => onFiltroChange({ ...filtros, isolamento: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="sem">Sem isolamento</SelectItem>
+                {isolamentoTipos.map((tipo) => (
+                  <SelectItem key={tipo.id} value={tipo.tipo}>
+                    {tipo.tipo}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

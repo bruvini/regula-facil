@@ -3,15 +3,14 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2 } from 'lucide-react';
-import { Setor, LeitoWithData } from '@/types/firestore';
+import { Edit, Trash2 } from 'lucide-react';
+import { Setor, LeitoWithData, Leito } from '@/types/firestore';
 import { useToast } from '@/hooks/use-toast';
+import FormularioSetor from './FormularioSetor';
+import FormularioLeitosLote from './FormularioLeitosLote';
 
 interface ModalGerenciamentoProps {
   aberto: boolean;
@@ -19,7 +18,8 @@ interface ModalGerenciamentoProps {
   setores: Setor[];
   leitos: LeitoWithData[];
   onAdicionarSetor: (setor: Omit<Setor, 'id'>) => Promise<void>;
-  onAdicionarLeito: (leito: any) => Promise<void>;
+  onEditarSetor: (setorId: string, setor: Partial<Setor>) => Promise<void>;
+  onAdicionarLeitosLote: (leitos: Array<Omit<Leito, 'id' | 'dataUltimaAtualizacaoStatus'>>) => Promise<void>;
 }
 
 const ModalGerenciamento = ({ 
@@ -27,91 +27,50 @@ const ModalGerenciamento = ({
   onFechar, 
   setores, 
   leitos, 
-  onAdicionarSetor, 
-  onAdicionarLeito 
+  onAdicionarSetor,
+  onEditarSetor,
+  onAdicionarLeitosLote
 }: ModalGerenciamentoProps) => {
   const { toast } = useToast();
-  const [novoSetor, setNovoSetor] = useState({
-    nomeCompleto: '',
-    sigla: '',
-    andar: '',
-    tipo: 'clínico' as 'crítico' | 'clínico' | 'cirúrgico'
-  });
-
-  const [novoLeito, setNovoLeito] = useState({
-    codigo: '',
-    setor: '',
-    tipo: 'clínico' as 'clínico' | 'crítico' | 'isolamento',
-    ehPCP: false,
-    alertas: [] as string[],
-    status: 'vago' as const
-  });
-
+  const [setorEditando, setSetorEditando] = useState<Setor | undefined>();
   const [filtroSetorLeitos, setFiltroSetorLeitos] = useState('todos');
 
-  const handleAdicionarSetor = async () => {
-    if (!novoSetor.nomeCompleto || !novoSetor.sigla) {
-      toast({
-        title: "Erro",
-        description: "Nome completo e sigla são obrigatórios.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const handleSalvarSetor = async (setorData: Omit<Setor, 'id'>) => {
     try {
-      await onAdicionarSetor(novoSetor);
-      setNovoSetor({
-        nomeCompleto: '',
-        sigla: '',
-        andar: '',
-        tipo: 'clínico'
-      });
-      toast({
-        title: "Sucesso",
-        description: "Setor adicionado com sucesso!"
-      });
+      if (setorEditando) {
+        await onEditarSetor(setorEditando.id, setorData);
+        setSetorEditando(undefined);
+        toast({
+          title: "Sucesso",
+          description: "Setor editado com sucesso!"
+        });
+      } else {
+        await onAdicionarSetor(setorData);
+        toast({
+          title: "Sucesso",
+          description: "Setor adicionado com sucesso!"
+        });
+      }
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao adicionar setor.",
+        description: setorEditando ? "Erro ao editar setor." : "Erro ao adicionar setor.",
         variant: "destructive"
       });
     }
   };
 
-  const handleAdicionarLeito = async () => {
-    if (!novoLeito.codigo || !novoLeito.setor) {
-      toast({
-        title: "Erro",
-        description: "Código e setor são obrigatórios.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const handleSalvarLeitosLote = async (leitosData: Array<Omit<Leito, 'id' | 'dataUltimaAtualizacaoStatus'>>) => {
     try {
-      const setorRef = { path: `setoresRegulaFacil/${novoLeito.setor}` };
-      await onAdicionarLeito({
-        ...novoLeito,
-        setor: setorRef
-      });
-      setNovoLeito({
-        codigo: '',
-        setor: '',
-        tipo: 'clínico',
-        ehPCP: false,
-        alertas: [],
-        status: 'vago'
-      });
+      await onAdicionarLeitosLote(leitosData);
       toast({
         title: "Sucesso",
-        description: "Leito adicionado com sucesso!"
+        description: `${leitosData.length} leitos adicionados com sucesso!`
       });
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao adicionar leito.",
+        description: "Erro ao adicionar leitos em lote.",
         variant: "destructive"
       });
     }
@@ -135,62 +94,10 @@ const ModalGerenciamento = ({
           </TabsList>
 
           <TabsContent value="setores" className="space-y-4">
-            {/* Formulário de novo setor */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
-                  Novo Setor
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="nomeCompleto">Nome Completo</Label>
-                    <Input
-                      id="nomeCompleto"
-                      value={novoSetor.nomeCompleto}
-                      onChange={(e) => setNovoSetor({...novoSetor, nomeCompleto: e.target.value})}
-                      placeholder="Ex: Unidade de Terapia Intensiva 1"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sigla">Sigla</Label>
-                    <Input
-                      id="sigla"
-                      value={novoSetor.sigla}
-                      onChange={(e) => setNovoSetor({...novoSetor, sigla: e.target.value})}
-                      placeholder="Ex: UTI1"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="andar">Andar</Label>
-                    <Input
-                      id="andar"
-                      value={novoSetor.andar}
-                      onChange={(e) => setNovoSetor({...novoSetor, andar: e.target.value})}
-                      placeholder="Ex: 2º"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tipo">Tipo</Label>
-                    <Select value={novoSetor.tipo} onValueChange={(value: any) => setNovoSetor({...novoSetor, tipo: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="clínico">Clínico</SelectItem>
-                        <SelectItem value="crítico">Crítico</SelectItem>
-                        <SelectItem value="cirúrgico">Cirúrgico</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <Button onClick={handleAdicionarSetor} className="w-full">
-                  Adicionar Setor
-                </Button>
-              </CardContent>
-            </Card>
+            <FormularioSetor 
+              setorEditando={setorEditando}
+              onSalvar={handleSalvarSetor}
+            />
 
             {/* Lista de setores existentes */}
             <Card>
@@ -205,10 +112,16 @@ const ModalGerenciamento = ({
                         <p className="font-medium">{setor.sigla} - {setor.nomeCompleto}</p>
                         <p className="text-sm text-muted-foreground">
                           {setor.andar} | {setor.tipo}
+                          {setor.ehPCP && <Badge variant="secondary" className="ml-2">PCP</Badge>}
                         </p>
+                        {setor.alertas && setor.alertas.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Alertas: {setor.alertas.join(', ')}
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => setSetorEditando(setor)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button variant="outline" size="sm">
@@ -223,67 +136,10 @@ const ModalGerenciamento = ({
           </TabsContent>
 
           <TabsContent value="leitos" className="space-y-4">
-            {/* Formulário de novo leito */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
-                  Novo Leito
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="codigo">Código</Label>
-                    <Input
-                      id="codigo"
-                      value={novoLeito.codigo}
-                      onChange={(e) => setNovoLeito({...novoLeito, codigo: e.target.value})}
-                      placeholder="Ex: 03 ou UTI1-03"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="setorLeito">Setor</Label>
-                    <Select value={novoLeito.setor} onValueChange={(value) => setNovoLeito({...novoLeito, setor: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o setor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {setores.map((setor) => (
-                          <SelectItem key={setor.id} value={setor.id}>
-                            {setor.sigla} - {setor.nomeCompleto}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tipoLeito">Tipo</Label>
-                    <Select value={novoLeito.tipo} onValueChange={(value: any) => setNovoLeito({...novoLeito, tipo: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="clínico">Clínico</SelectItem>
-                        <SelectItem value="crítico">Crítico</SelectItem>
-                        <SelectItem value="isolamento">Isolamento</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 flex items-center space-x-2 pt-6">
-                    <Checkbox
-                      id="ehPCP"
-                      checked={novoLeito.ehPCP}
-                      onCheckedChange={(checked) => setNovoLeito({...novoLeito, ehPCP: checked as boolean})}
-                    />
-                    <Label htmlFor="ehPCP">É PCP</Label>
-                  </div>
-                </div>
-                <Button onClick={handleAdicionarLeito} className="w-full">
-                  Adicionar Leito
-                </Button>
-              </CardContent>
-            </Card>
+            <FormularioLeitosLote 
+              setores={setores}
+              onSalvar={handleSalvarLeitosLote}
+            />
 
             {/* Filtro e lista de leitos */}
             <Card>
@@ -316,6 +172,11 @@ const ModalGerenciamento = ({
                           <Badge variant="outline" className="ml-2">{leito.status}</Badge>
                           {leito.ehPCP && <Badge variant="secondary" className="ml-1">PCP</Badge>}
                         </p>
+                        {leito.alertas && leito.alertas.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Alertas: {leito.alertas.join(', ')}
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm">

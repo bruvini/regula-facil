@@ -1,14 +1,38 @@
-
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDoc, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Leito, Setor, Paciente, LeitoWithData, LogSistema } from '@/types/firestore';
 
+interface IsolamentoTipo {
+  id: string;
+  tipo: string;
+}
+
 export const useMapaLeitos = () => {
   const [leitos, setLeitos] = useState<LeitoWithData[]>([]);
   const [setores, setSetores] = useState<Setor[]>([]);
+  const [isolamentoTipos, setIsolamentoTipos] = useState<IsolamentoTipo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Carregar tipos de isolamento
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'isolamentosRegulaFacil'),
+      (snapshot) => {
+        const tipos = snapshot.docs.map(doc => ({
+          id: doc.id,
+          tipo: doc.data().tipo
+        })) as IsolamentoTipo[];
+        setIsolamentoTipos(tipos);
+      },
+      (err) => {
+        console.error('Erro ao carregar tipos de isolamento:', err);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   // Carregar setores
   useEffect(() => {
@@ -125,6 +149,17 @@ export const useMapaLeitos = () => {
     }
   };
 
+  const editarSetor = async (setorId: string, setorData: Partial<Setor>) => {
+    try {
+      const setorRef = doc(db, 'setoresRegulaFacil', setorId);
+      await updateDoc(setorRef, setorData);
+      await adicionarLog('Mapa de Leitos', 'Editar setor', setorId, `Setor ${setorData.sigla} editado`);
+    } catch (err) {
+      console.error('Erro ao editar setor:', err);
+      throw new Error('Erro ao editar setor');
+    }
+  };
+
   const adicionarLeito = async (leitoData: Omit<Leito, 'id' | 'dataUltimaAtualizacaoStatus'>) => {
     try {
       await addDoc(collection(db, 'leitosRegulaFacil'), {
@@ -138,14 +173,33 @@ export const useMapaLeitos = () => {
     }
   };
 
+  const adicionarLeitosEmLote = async (leitosData: Array<Omit<Leito, 'id' | 'dataUltimaAtualizacaoStatus'>>) => {
+    try {
+      const promises = leitosData.map(leitoData => 
+        addDoc(collection(db, 'leitosRegulaFacil'), {
+          ...leitoData,
+          dataUltimaAtualizacaoStatus: Timestamp.now()
+        })
+      );
+      await Promise.all(promises);
+      await adicionarLog('Mapa de Leitos', 'Adicionar leitos em lote', 'novo', `${leitosData.length} leitos adicionados`);
+    } catch (err) {
+      console.error('Erro ao adicionar leitos em lote:', err);
+      throw new Error('Erro ao adicionar leitos em lote');
+    }
+  };
+
   return {
     leitos,
     setores,
+    isolamentoTipos,
     loading,
     error,
     atualizarStatusLeito,
     adicionarSetor,
+    editarSetor,
     adicionarLeito,
+    adicionarLeitosEmLote,
     adicionarLog
   };
 };
