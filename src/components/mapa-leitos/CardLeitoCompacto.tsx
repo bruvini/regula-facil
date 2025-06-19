@@ -225,9 +225,10 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
             </div>
             <span>{leito.pacienteData.idade} anos</span>
           </div>
-        ) : leito.status === 'bloqueado' ? (
-          <div className="text-xs text-muted-foreground">
-            Motivo do bloqueio
+        ) : leito.status === 'bloqueado' && leito.motivoBloqueio ? (
+          <div className="text-xs text-muted-foreground p-1 bg-gray-50 rounded">
+            <span className="font-medium">Motivo: </span>
+            <span>{leito.motivoBloqueio}</span>
           </div>
         ) : null}
         

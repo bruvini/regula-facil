@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react';
 import Layout from "@/components/Layout";
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,7 +25,12 @@ const MapaLeitos = () => {
     regularPaciente,
     adicionarSetor, 
     editarSetor,
-    adicionarLeitosEmLote 
+    excluirSetor,
+    adicionarLeito,
+    editarLeito,
+    excluirLeito,
+    adicionarLeitosEmLote,
+    verificarPacientesAguardandoRegulacao
   } = useMapaLeitos();
   const { toast } = useToast();
   
@@ -132,6 +138,15 @@ const MapaLeitos = () => {
     try {
       switch (acao) {
         case 'regular':
+          // Verificar se há pacientes aguardando regulação antes de abrir o modal
+          const temPacientes = await verificarPacientesAguardandoRegulacao();
+          if (!temPacientes) {
+            toast({
+              title: "Nenhum paciente aguardando regulação no momento.",
+              description: "Não há pacientes internados com regulação pendente."
+            });
+            return;
+          }
           setLeitoSelecionado(leitoId);
           setModalRegulacaoAberto(true);
           break;
@@ -273,6 +288,10 @@ const MapaLeitos = () => {
           leitos={leitos}
           onAdicionarSetor={adicionarSetor}
           onEditarSetor={editarSetor}
+          onExcluirSetor={excluirSetor}
+          onAdicionarLeito={adicionarLeito}
+          onEditarLeito={editarLeito}
+          onExcluirLeito={excluirLeito}
           onAdicionarLeitosLote={adicionarLeitosEmLote}
         />
 

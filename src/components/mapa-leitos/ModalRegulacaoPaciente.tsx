@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, User } from 'lucide-react';
+import { Clock, User, MapPin } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +21,12 @@ interface Paciente {
 interface Regulacao {
   status: string;
   dataInicio?: any;
+}
+
+interface Setor {
+  id: string;
+  sigla: string;
+  nomeCompleto: string;
 }
 
 interface ModalRegulacaoPacienteProps {
@@ -56,6 +62,17 @@ const ModalRegulacaoPaciente = ({ aberto, onFechar, leitoId, onRegular }: ModalR
                 if (regulacaoDoc.exists()) {
                   const regulacaoData = regulacaoDoc.data() as Regulacao;
                   if (regulacaoData.status === 'aguardando') {
+                    // Buscar dados do setor atual
+                    if (pacienteData.setorAtual) {
+                      const setorDoc = await getDoc(pacienteData.setorAtual);
+                      if (setorDoc.exists()) {
+                        pacienteData.setorAtual = { id: setorDoc.id, ...setorDoc.data() } as Setor;
+                      }
+                    }
+                    
+                    // Adicionar dados da regulação
+                    pacienteData.regulacaoAtual = regulacaoData;
+                    
                     return pacienteData;
                   }
                 }
@@ -66,13 +83,6 @@ const ModalRegulacaoPaciente = ({ aberto, onFechar, leitoId, onRegular }: ModalR
 
           const pacientesFiltrados = pacientesData.filter(p => p !== null) as Paciente[];
           setPacientes(pacientesFiltrados);
-          
-          if (pacientesFiltrados.length === 0) {
-            toast({
-              title: "Nenhum paciente aguardando regulação no momento.",
-            });
-          }
-          
           setLoading(false);
         } catch (error) {
           console.error('Erro ao carregar pacientes:', error);
@@ -82,7 +92,7 @@ const ModalRegulacaoPaciente = ({ aberto, onFechar, leitoId, onRegular }: ModalR
 
       return () => unsubscribe();
     }
-  }, [aberto, toast]);
+  }, [aberto]);
 
   const handleRegular = async (pacienteId: string) => {
     try {
@@ -112,7 +122,7 @@ const ModalRegulacaoPaciente = ({ aberto, onFechar, leitoId, onRegular }: ModalR
 
   return (
     <Dialog open={aberto} onOpenChange={onFechar}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Regulação de Paciente</DialogTitle>
         </DialogHeader>
@@ -127,30 +137,59 @@ const ModalRegulacaoPaciente = ({ aberto, onFechar, leitoId, onRegular }: ModalR
           </div>
         ) : (
           <div className="space-y-4">
+            <div className="text-sm text-muted-foreground mb-4">
+              {pacientes.length} paciente(s) aguardando regulação
+            </div>
+            
             {pacientes.map((paciente) => (
               <Card key={paciente.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <User className="h-4 w-4" />
-                        <h3 className="font-medium">{paciente.nome}</h3>
-                        <Badge variant="outline">
-                          {paciente.idade} anos - {paciente.sexo === 'M' ? 'Masculino' : 'Feminino'}
-                        </Badge>
+                    <div className="flex-1 space-y-3">
+                      {/* Linha 1: Nome e dados básicos */}
+                      <div className="flex items-center gap-3">
+                        <User className="h-5 w-5 text-blue-500" />
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-lg">{paciente.nome}</h3>
+                          <Badge variant="outline">
+                            {paciente.idade} anos
+                          </Badge>
+                          <Badge variant="outline">
+                            {paciente.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                          </Badge>
+                        </div>
                       </div>
                       
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          Tempo de espera: {calcularTempoEspera(paciente.regulacaoAtual)}
+                      {/* Linha 2: Setor de origem */}
+                      {paciente.setorAtual && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <MapPin className="h-4 w-4" />
+                          <span>Setor de origem:</span>
+                          <Badge variant="secondary">
+                            {paciente.setorAtual.sigla} - {paciente.setorAtual.nomeCompleto}
+                          </Badge>
                         </div>
+                      )}
+                      
+                      {/* Linha 3: Tempo de espera */}
+                      <div className="flex items-center gap-2 text-sm">
+                        <Clock className="h-4 w-4 text-orange-500" />
+                        <span className="text-muted-foreground">Tempo de espera:</span>
+                        <Badge variant="outline" className="text-orange-600 border-orange-200">
+                          {calcularTempoEspera(paciente.regulacaoAtual)}
+                        </Badge>
                       </div>
                     </div>
                     
-                    <Button onClick={() => handleRegular(paciente.id)}>
-                      Regulamentar
-                    </Button>
+                    {/* Botão de ação */}
+                    <div className="ml-4">
+                      <Button 
+                        onClick={() => handleRegular(paciente.id)}
+                        className="min-w-[120px]"
+                      >
+                        Regulamentar
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
