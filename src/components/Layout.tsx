@@ -1,5 +1,6 @@
 
 import { ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import Header from "@/components/Header";
@@ -10,6 +11,22 @@ interface LayoutProps {
 }
 
 const Layout = ({ children }: LayoutProps) => {
+  const location = useLocation();
+  const isInicioPage = location.pathname === "/inicio";
+
+  if (isInicioPage) {
+    // For the inicio page, render without sidebar
+    return (
+      <div className="min-h-screen flex flex-col w-full">
+        <main className="flex-1">
+          {children}
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // For all other pages, render with sidebar
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
