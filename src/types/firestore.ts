@@ -7,6 +7,8 @@ export interface Setor {
   sigla: string;
   andar: string;
   tipo: 'crítico' | 'clínico' | 'cirúrgico';
+  ehPCP?: boolean;
+  alertas?: string[];
 }
 
 export interface Leito {
