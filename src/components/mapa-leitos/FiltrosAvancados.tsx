@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 
 interface IsolamentoTipo {
@@ -17,7 +18,7 @@ interface FiltrosAvancadosProps {
     statusSelecionados: string[];
     tipoLeito: string;
     apenasPC: boolean;
-    isolamento: string;
+    isolamento: string[];
     tempoMinimoStatus: number;
     sexoPaciente: string;
   };
@@ -42,10 +43,19 @@ const FiltrosAvancados = ({ aberto, isolamentoTipos, filtros, onFiltroChange }: 
     onFiltroChange({ ...filtros, statusSelecionados: novosStatus });
   };
 
+  const handleIsolamentoToggle = (isolamento: string) => {
+    const isolamentosArray = Array.isArray(filtros.isolamento) ? filtros.isolamento : [];
+    const novosIsolamentos = isolamentosArray.includes(isolamento)
+      ? isolamentosArray.filter(i => i !== isolamento)
+      : [...isolamentosArray, isolamento];
+    
+    onFiltroChange({ ...filtros, isolamento: novosIsolamentos });
+  };
+
   return (
     <Collapsible open={aberto}>
       <CollapsibleContent className="space-y-4 animate-accordion-down">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label>Sexo do Paciente</Label>
             <Select value={filtros.sexoPaciente} onValueChange={(value) => onFiltroChange({ ...filtros, sexoPaciente: value })}>
@@ -56,24 +66,6 @@ const FiltrosAvancados = ({ aberto, isolamentoTipos, filtros, onFiltroChange }: 
                 <SelectItem value="todos">Todos</SelectItem>
                 <SelectItem value="M">Masculino</SelectItem>
                 <SelectItem value="F">Feminino</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Isolamento</Label>
-            <Select value={filtros.isolamento} onValueChange={(value) => onFiltroChange({ ...filtros, isolamento: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="sem">Sem isolamento</SelectItem>
-                {isolamentoTipos.map((tipo) => (
-                  <SelectItem key={tipo.id} value={tipo.tipo}>
-                    {tipo.tipo}
-                  </SelectItem>
-                ))}
               </SelectContent>
             </Select>
           </div>
@@ -100,6 +92,24 @@ const FiltrosAvancados = ({ aberto, isolamentoTipos, filtros, onFiltroChange }: 
               value={filtros.tempoMinimoStatus || ''}
               onChange={(e) => onFiltroChange({ ...filtros, tempoMinimoStatus: Number(e.target.value) || 0 })}
             />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Isolamentos</Label>
+          <div className="flex flex-wrap gap-2">
+            {isolamentoTipos.map((tipo) => (
+              <div key={tipo.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`isolamento-${tipo.id}`}
+                  checked={Array.isArray(filtros.isolamento) && filtros.isolamento.includes(tipo.tipo)}
+                  onCheckedChange={() => handleIsolamentoToggle(tipo.tipo)}
+                />
+                <Label htmlFor={`isolamento-${tipo.id}`} className="text-sm font-normal">
+                  {tipo.tipo}
+                </Label>
+              </div>
+            ))}
           </div>
         </div>
 

@@ -7,10 +7,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Setor, Leito } from '@/types/firestore';
 import { doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+
+interface LeitoFormData {
+  codigo: string;
+  ehPCP: boolean;
+  ehIsolamento: boolean;
+  alertas: string;
+}
 
 interface FormularioLeitosLoteProps {
   setores: Setor[];
@@ -18,53 +25,53 @@ interface FormularioLeitosLoteProps {
 }
 
 const FormularioLeitosLote = ({ setores, onSalvar }: FormularioLeitosLoteProps) => {
-  const [formData, setFormData] = useState({
-    setor: '',
-    codigos: '',
-    tipo: 'clínico' as 'clínico' | 'crítico' | 'isolamento',
-    ehPCP: false,
-    alertas: [] as string[],
-    status: 'vago' as const
-  });
+  const [setorSelecionado, setSetorSelecionado] = useState('');
+  const [leitos, setLeitos] = useState<LeitoFormData[]>([
+    { codigo: '', ehPCP: false, ehIsolamento: false, alertas: '' }
+  ]);
 
-  const [alertasTexto, setAlertasTexto] = useState('');
+  const adicionarLinha = () => {
+    setLeitos([...leitos, { codigo: '', ehPCP: false, ehIsolamento: false, alertas: '' }]);
+  };
+
+  const removerLinha = (index: number) => {
+    if (leitos.length > 1) {
+      setLeitos(leitos.filter((_, i) => i !== index));
+    }
+  };
+
+  const atualizarLeito = (index: number, campo: keyof LeitoFormData, valor: any) => {
+    const novosLeitos = [...leitos];
+    novosLeitos[index] = { ...novosLeitos[index], [campo]: valor };
+    setLeitos(novosLeitos);
+  };
 
   const handleSalvar = async () => {
-    if (!formData.setor || !formData.codigos.trim()) {
-      return;
-    }
+    if (!setorSelecionado) return;
 
-    const codigosArray = formData.codigos
-      .split('\n')
-      .map(linha => linha.trim())
-      .filter(linha => linha.length > 0);
+    const leitosValidos = leitos.filter(leito => leito.codigo.trim());
+    
+    const leitosData = leitosValidos.map(leito => {
+      const alertasArray = leito.alertas
+        .split('\n')
+        .map(linha => linha.trim())
+        .filter(linha => linha.length > 0);
 
-    const alertasArray = alertasTexto
-      .split('\n')
-      .map(linha => linha.trim())
-      .filter(linha => linha.length > 0);
-
-    const leitosData = codigosArray.map(codigo => ({
-      codigo,
-      setor: doc(db, 'setoresRegulaFacil', formData.setor),
-      tipo: formData.tipo,
-      ehPCP: formData.ehPCP,
-      alertas: alertasArray,
-      status: formData.status
-    }));
+      return {
+        codigo: leito.codigo,
+        setor: doc(db, 'setoresRegulaFacil', setorSelecionado),
+        tipo: leito.ehIsolamento ? 'isolamento' as const : 'clínico' as const,
+        ehPCP: leito.ehPCP,
+        alertas: alertasArray,
+        status: 'vago' as const
+      };
+    });
 
     await onSalvar(leitosData);
 
     // Reset form
-    setFormData({
-      setor: '',
-      codigos: '',
-      tipo: 'clínico',
-      ehPCP: false,
-      alertas: [],
-      status: 'vago'
-    });
-    setAlertasTexto('');
+    setSetorSelecionado('');
+    setLeitos([{ codigo: '', ehPCP: false, ehIsolamento: false, alertas: '' }]);
   };
 
   return (
@@ -72,76 +79,96 @@ const FormularioLeitosLote = ({ setores, onSalvar }: FormularioLeitosLoteProps) 
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Plus className="h-5 w-5" />
-          Adicionar Leitos em Lote
+          Adicionar Leitos
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="setorLeito">Setor</Label>
-            <Select value={formData.setor} onValueChange={(value) => setFormData({...formData, setor: value})}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o setor" />
-              </SelectTrigger>
-              <SelectContent>
-                {setores.map((setor) => (
-                  <SelectItem key={setor.id} value={setor.id}>
-                    {setor.sigla} - {setor.nomeCompleto}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tipoLeito">Tipo</Label>
-            <Select value={formData.tipo} onValueChange={(value: any) => setFormData({...formData, tipo: value})}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="clínico">Clínico</SelectItem>
-                <SelectItem value="crítico">Crítico</SelectItem>
-                <SelectItem value="isolamento">Isolamento</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
         <div className="space-y-2">
-          <Label htmlFor="codigos">Códigos dos Leitos (um por linha)</Label>
-          <Textarea
-            id="codigos"
-            value={formData.codigos}
-            onChange={(e) => setFormData({...formData, codigos: e.target.value})}
-            placeholder="Ex:&#10;01&#10;02&#10;03&#10;04"
-            rows={4}
-          />
+          <Label htmlFor="setorLeito">Setor</Label>
+          <Select value={setorSelecionado} onValueChange={setSetorSelecionado}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o setor" />
+            </SelectTrigger>
+            <SelectContent>
+              {setores.map((setor) => (
+                <SelectItem key={setor.id} value={setor.id}>
+                  {setor.sigla} - {setor.nomeCompleto}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        <div className="space-y-2 flex items-center space-x-2">
-          <Checkbox
-            id="ehPCP"
-            checked={formData.ehPCP}
-            onCheckedChange={(checked) => setFormData({...formData, ehPCP: checked as boolean})}
-          />
-          <Label htmlFor="ehPCP">É PCP</Label>
-        </div>
+        {setorSelecionado && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Leitos</Label>
+              <Button type="button" variant="outline" size="sm" onClick={adicionarLinha}>
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar Linha
+              </Button>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="alertas">Alertas (um por linha)</Label>
-          <Textarea
-            id="alertas"
-            value={alertasTexto}
-            onChange={(e) => setAlertasTexto(e.target.value)}
-            placeholder="Digite um alerta por linha..."
-            rows={3}
-          />
-        </div>
+            {leitos.map((leito, index) => (
+              <div key={index} className="grid grid-cols-12 gap-2 items-end p-3 border rounded-lg">
+                <div className="col-span-3">
+                  <Label className="text-xs">Código</Label>
+                  <Input
+                    placeholder="Ex: 01"
+                    value={leito.codigo}
+                    onChange={(e) => atualizarLeito(index, 'codigo', e.target.value)}
+                  />
+                </div>
 
-        <Button onClick={handleSalvar} className="w-full">
-          Adicionar Leitos
-        </Button>
+                <div className="col-span-4">
+                  <Label className="text-xs">Alertas</Label>
+                  <Textarea
+                    placeholder="Um alerta por linha..."
+                    value={leito.alertas}
+                    onChange={(e) => atualizarLeito(index, 'alertas', e.target.value)}
+                    rows={2}
+                  />
+                </div>
+
+                <div className="col-span-2 flex flex-col space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`pcp-${index}`}
+                      checked={leito.ehPCP}
+                      onCheckedChange={(checked) => atualizarLeito(index, 'ehPCP', checked)}
+                    />
+                    <Label htmlFor={`pcp-${index}`} className="text-xs">PCP</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`isolamento-${index}`}
+                      checked={leito.ehIsolamento}
+                      onCheckedChange={(checked) => atualizarLeito(index, 'ehIsolamento', checked)}
+                    />
+                    <Label htmlFor={`isolamento-${index}`} className="text-xs">Isolamento</Label>
+                  </div>
+                </div>
+
+                <div className="col-span-1">
+                  {leitos.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removerLinha(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            <Button onClick={handleSalvar} className="w-full">
+              Adicionar Leitos
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

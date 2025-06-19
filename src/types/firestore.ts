@@ -21,6 +21,7 @@ export interface Leito {
   ehPCP: boolean;
   alertas: string[];
   dataUltimaAtualizacaoStatus: Timestamp;
+  motivoBloqueio?: string;
 }
 
 export interface Paciente {

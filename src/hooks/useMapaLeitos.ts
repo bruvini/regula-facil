@@ -110,17 +110,53 @@ export const useMapaLeitos = () => {
 
   const atualizarStatusLeito = async (leitoId: string, novoStatus: Leito['status'], motivo?: string) => {
     try {
-      const leitoRef = doc(db, 'leitosRegulaFacil', leitoId);
-      await updateDoc(leitoRef, {
+      const updateData: any = {
         status: novoStatus,
         dataUltimaAtualizacaoStatus: Timestamp.now()
-      });
+      };
+
+      // Add motivo if blocking
+      if (novoStatus === 'bloqueado' && motivo) {
+        updateData.motivoBloqueio = motivo;
+      }
+
+      const leitoRef = doc(db, 'leitosRegulaFacil', leitoId);
+      await updateDoc(leitoRef, updateData);
 
       // Registrar log
       await adicionarLog('Mapa de Leitos', `Alterar status para ${novoStatus}`, leitoId, `Status alterado para ${novoStatus}${motivo ? ` - Motivo: ${motivo}` : ''}`);
     } catch (err) {
       console.error('Erro ao atualizar status do leito:', err);
       throw new Error('Erro ao atualizar status do leito');
+    }
+  };
+
+  const bloquearLeito = async (leitoId: string, motivo: string) => {
+    await atualizarStatusLeito(leitoId, 'bloqueado', motivo);
+  };
+
+  const regularPaciente = async (pacienteId: string, leitoId: string) => {
+    try {
+      // Update bed status to occupied
+      await atualizarStatusLeito(leitoId, 'ocupado');
+      
+      // Update patient's current bed
+      const pacienteRef = doc(db, 'pacientesRegulaFacil', pacienteId);
+      const leitoRef = doc(db, 'leitosRegulaFacil', leitoId);
+      
+      await updateDoc(pacienteRef, {
+        leitoAtual: leitoRef
+      });
+
+      // Update bed's current patient
+      await updateDoc(leitoRef, {
+        pacienteAtual: doc(db, 'pacientesRegulaFacil', pacienteId)
+      });
+
+      await adicionarLog('Mapa de Leitos', 'Regular paciente', leitoId, `Paciente ${pacienteId} regulado para leito ${leitoId}`);
+    } catch (err) {
+      console.error('Erro ao regular paciente:', err);
+      throw new Error('Erro ao regular paciente');
     }
   };
 
@@ -196,6 +232,8 @@ export const useMapaLeitos = () => {
     loading,
     error,
     atualizarStatusLeito,
+    bloquearLeito,
+    regularPaciente,
     adicionarSetor,
     editarSetor,
     adicionarLeito,

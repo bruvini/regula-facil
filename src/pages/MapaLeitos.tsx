@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import Layout from "@/components/Layout";
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +7,8 @@ import FiltrosLeitos from '@/components/mapa-leitos/FiltrosLeitos';
 import FiltrosAvancados from '@/components/mapa-leitos/FiltrosAvancados';
 import GridLeitosPorSetor from '@/components/mapa-leitos/GridLeitosPorSetor';
 import ModalGerenciamento from '@/components/mapa-leitos/ModalGerenciamento';
+import ModalRegulacaoPaciente from '@/components/mapa-leitos/ModalRegulacaoPaciente';
+import ModalBloquearLeito from '@/components/mapa-leitos/ModalBloquearLeito';
 import { LeitoWithData } from '@/types/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,7 +19,9 @@ const MapaLeitos = () => {
     isolamentoTipos,
     loading, 
     error, 
-    atualizarStatusLeito, 
+    atualizarStatusLeito,
+    bloquearLeito,
+    regularPaciente,
     adicionarSetor, 
     editarSetor,
     adicionarLeitosEmLote 
@@ -31,13 +34,16 @@ const MapaLeitos = () => {
     statusSelecionados: [] as string[],
     tipoLeito: 'todos',
     apenasPC: false,
-    isolamento: 'todos',
+    isolamento: [] as string[],
     tempoMinimoStatus: 0,
     sexoPaciente: 'todos'
   });
 
   const [filtrosAvancadosAbertos, setFiltrosAvancadosAbertos] = useState(false);
   const [modalGerenciamentoAberto, setModalGerenciamentoAberto] = useState(false);
+  const [modalRegulacaoAberto, setModalRegulacaoAberto] = useState(false);
+  const [modalBloqueioAberto, setModalBloqueioAberto] = useState(false);
+  const [leitoSelecionado, setLeitoSelecionado] = useState<string>('');
 
   // Filtrar leitos
   const leitosFiltrados = useMemo(() => {
@@ -75,22 +81,14 @@ const MapaLeitos = () => {
         return false;
       }
 
-      // Filtro de isolamento
-      if (filtros.isolamento !== 'todos') {
-        if (filtros.isolamento === 'sem') {
-          if (leito.pacienteData?.isolamentosAtivos && leito.pacienteData.isolamentosAtivos.length > 0) {
-            return false;
-          }
-        } else {
-          // Filtrar por tipo específico de isolamento
-          const temIsolamento = leito.pacienteData?.isolamentosAtivos?.some(iso => {
-            // Fix: iso is a DocumentReference, we need to check it properly
-            // This would need to be resolved from the database, for now just check if exists
-            return true; // Placeholder - this would need proper isolation type checking
-          });
-          if (!temIsolamento) {
-            return false;
-          }
+      // Filtro de isolamento (updated for multiple selection)
+      if (filtros.isolamento.length > 0) {
+        const temIsolamento = leito.pacienteData?.isolamentosAtivos?.some(iso => {
+          // This would need proper isolation type checking when resolved from database
+          return true; // Placeholder
+        });
+        if (!temIsolamento) {
+          return false;
         }
       }
 
@@ -134,18 +132,13 @@ const MapaLeitos = () => {
     try {
       switch (acao) {
         case 'regular':
-          toast({
-            title: "Funcionalidade em desenvolvimento",
-            description: "A regulação de pacientes será implementada em breve."
-          });
+          setLeitoSelecionado(leitoId);
+          setModalRegulacaoAberto(true);
           break;
         
         case 'bloquear':
-          await atualizarStatusLeito(leitoId, 'bloqueado', 'Bloqueado pelo usuário');
-          toast({
-            title: "Leito bloqueado",
-            description: "O leito foi bloqueado com sucesso."
-          });
+          setLeitoSelecionado(leitoId);
+          setModalBloqueioAberto(true);
           break;
         
         case 'alta':
@@ -281,6 +274,20 @@ const MapaLeitos = () => {
           onAdicionarSetor={adicionarSetor}
           onEditarSetor={editarSetor}
           onAdicionarLeitosLote={adicionarLeitosEmLote}
+        />
+
+        <ModalRegulacaoPaciente
+          aberto={modalRegulacaoAberto}
+          onFechar={() => setModalRegulacaoAberto(false)}
+          leitoId={leitoSelecionado}
+          onRegular={regularPaciente}
+        />
+
+        <ModalBloquearLeito
+          aberto={modalBloqueioAberto}
+          onFechar={() => setModalBloqueioAberto(false)}
+          leitoId={leitoSelecionado}
+          onBloquear={bloquearLeito}
         />
 
         <GridLeitosPorSetor
