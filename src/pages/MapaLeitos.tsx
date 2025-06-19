@@ -1,12 +1,12 @@
-
 import { useState, useMemo } from 'react';
 import Layout from "@/components/Layout";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useMapaLeitos } from '@/hooks/useMapaLeitos';
-import IndicadoresMapaLeitos from '@/components/mapa-leitos/IndicadoresMapaLeitos';
-import FiltrosCompactos from '@/components/mapa-leitos/FiltrosCompactos';
+import IndicadoresBar from '@/components/mapa-leitos/IndicadoresBar';
+import FiltrosLeitos from '@/components/mapa-leitos/FiltrosLeitos';
+import FiltrosAvancados from '@/components/mapa-leitos/FiltrosAvancados';
+import GridLeitosPorSetor from '@/components/mapa-leitos/GridLeitosPorSetor';
 import ModalGerenciamento from '@/components/mapa-leitos/ModalGerenciamento';
-import CardLeito from '@/components/mapa-leitos/CardLeito';
 import { LeitoWithData } from '@/types/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { doc } from 'firebase/firestore';
@@ -23,9 +23,11 @@ const MapaLeitos = () => {
     tipoLeito: 'todos',
     apenasPC: false,
     isolamento: 'todos',
-    tempoMinimoStatus: 0
+    tempoMinimoStatus: 0,
+    sexoPaciente: 'todos'
   });
 
+  const [filtrosAvancadosAbertos, setFiltrosAvancadosAbertos] = useState(false);
   const [modalGerenciamentoAberto, setModalGerenciamentoAberto] = useState(false);
 
   // Filtrar leitos
@@ -37,9 +39,9 @@ const MapaLeitos = () => {
         const matchCodigo = leito.codigo.toLowerCase().includes(busca);
         const matchSetor = leito.setorData?.sigla.toLowerCase().includes(busca) || 
                           leito.setorData?.nomeCompleto.toLowerCase().includes(busca);
-        const matchStatus = leito.status.toLowerCase().includes(busca);
+        const matchPaciente = leito.pacienteData?.nome.toLowerCase().includes(busca);
         
-        if (!matchCodigo && !matchSetor && !matchStatus) {
+        if (!matchCodigo && !matchSetor && !matchPaciente) {
           return false;
         }
       }
@@ -79,6 +81,11 @@ const MapaLeitos = () => {
         if (tempoAtualMinutos < filtros.tempoMinimoStatus) {
           return false;
         }
+      }
+
+      // Filtro de sexo do paciente
+      if (filtros.sexoPaciente !== 'todos' && leito.pacienteData?.sexo !== filtros.sexoPaciente) {
+        return false;
       }
 
       return true;
@@ -230,14 +237,26 @@ const MapaLeitos = () => {
           </div>
         </div>
 
-        <IndicadoresMapaLeitos leitos={leitosFiltrados} />
+        <IndicadoresBar leitos={leitosFiltrados} />
 
-        <FiltrosCompactos
-          setores={setores}
-          filtros={filtros}
-          onFiltroChange={setFiltros}
-          onAbrirModal={() => setModalGerenciamentoAberto(true)}
-        />
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <FiltrosLeitos
+              busca={filtros.busca}
+              onBuscaChange={(busca) => setFiltros({ ...filtros, busca })}
+              filtrosAvancadosAbertos={filtrosAvancadosAbertos}
+              onToggleFiltrosAvancados={() => setFiltrosAvancadosAbertos(!filtrosAvancadosAbertos)}
+              onAbrirModal={() => setModalGerenciamentoAberto(true)}
+            />
+
+            <FiltrosAvancados
+              aberto={filtrosAvancadosAbertos}
+              setores={setores}
+              filtros={filtros}
+              onFiltroChange={setFiltros}
+            />
+          </CardContent>
+        </Card>
 
         <ModalGerenciamento
           aberto={modalGerenciamentoAberto}
@@ -248,46 +267,10 @@ const MapaLeitos = () => {
           onAdicionarLeito={handleAdicionarLeitoComRef}
         />
 
-        {leitosPorSetor.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <p className="text-lg text-muted-foreground">
-                Nenhum leito encontrado com os filtros aplicados.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {leitosPorSetor.map((grupo) => (
-              <Card key={grupo.setor.id || 'sem-setor'} className="overflow-hidden">
-                <CardHeader className="bg-muted/50">
-                  <CardTitle className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xl">{grupo.setor.sigla}</span>
-                      <span className="text-sm font-normal text-muted-foreground ml-2">
-                        {grupo.setor.nomeCompleto}
-                      </span>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {grupo.leitos.length} leitos
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {grupo.leitos.map((leito) => (
-                      <CardLeito
-                        key={leito.id}
-                        leito={leito}
-                        onAcao={handleAcaoLeito}
-                      />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+        <GridLeitosPorSetor
+          leitosPorSetor={leitosPorSetor}
+          onAcaoLeito={handleAcaoLeito}
+        />
       </div>
     </Layout>
   );
