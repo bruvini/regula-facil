@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -74,7 +73,12 @@ const ModalRegulacaoPaciente = ({ aberto, onFechar, leitoId, onRegular }: ModalR
                     if (pacienteData.setorAtual) {
                       const setorDoc = await getDoc(pacienteData.setorAtual);
                       if (setorDoc.exists()) {
-                        pacienteData.setorAtual = { id: setorDoc.id, ...setorDoc.data() } as Setor;
+                        const setorDocData = setorDoc.data();
+                        pacienteData.setorAtual = { 
+                          id: setorDoc.id, 
+                          sigla: setorDocData.sigla || '',
+                          nomeCompleto: setorDocData.nomeCompleto || ''
+                        } as Setor;
                       }
                     }
                     
