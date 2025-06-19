@@ -54,7 +54,15 @@ const ModalRegulacaoPaciente = ({ aberto, onFechar, leitoId, onRegular }: ModalR
         try {
           const pacientesData = await Promise.all(
             snapshot.docs.map(async (pacienteDoc) => {
-              const pacienteData = { id: pacienteDoc.id, ...pacienteDoc.data() } as Paciente;
+              const pacienteDocData = pacienteDoc.data();
+              const pacienteData: Paciente = { 
+                id: pacienteDoc.id, 
+                nome: pacienteDocData.nome || '',
+                idade: pacienteDocData.idade || 0,
+                sexo: pacienteDocData.sexo || 'M',
+                setorAtual: pacienteDocData.setorAtual,
+                regulacaoAtual: pacienteDocData.regulacaoAtual
+              };
               
               // Check if patient has active regulation with status 'aguardando'
               if (pacienteData.regulacaoAtual) {

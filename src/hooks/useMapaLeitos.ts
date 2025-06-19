@@ -9,6 +9,11 @@ interface IsolamentoTipo {
   tipo: string;
 }
 
+interface Regulacao {
+  status: string;
+  dataInicio?: any;
+}
+
 export const useMapaLeitos = () => {
   const [leitos, setLeitos] = useState<LeitoWithData[]>([]);
   const [setores, setSetores] = useState<Setor[]>([]);
@@ -333,7 +338,7 @@ export const useMapaLeitos = () => {
         if (pacienteData.regulacaoAtual) {
           const regulacaoDoc = await getDoc(pacienteData.regulacaoAtual);
           if (regulacaoDoc.exists()) {
-            const regulacaoData = regulacaoDoc.data();
+            const regulacaoData = regulacaoDoc.data() as Regulacao;
             if (regulacaoData.status === 'aguardando') {
               return true;
             }
