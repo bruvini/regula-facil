@@ -30,7 +30,6 @@ export interface Setor {
   andar: string;
   tipo: string;
   alertas: string[];
-  ehPCP?: boolean;
 }
 
 export interface Leito {

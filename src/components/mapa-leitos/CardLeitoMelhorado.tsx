@@ -26,12 +26,12 @@ interface CardLeitoMelhoradoProps {
 }
 
 const statusConfig = {
-  vago: { color: 'bg-green-500', label: 'Vago', icon: Bed },
-  ocupado: { color: 'bg-red-500', label: 'Ocupado', icon: User },
-  reservado: { color: 'bg-orange-500', label: 'Reservado', icon: Calendar },
-  bloqueado: { color: 'bg-gray-500', label: 'Bloqueado', icon: Ban },
-  limpeza: { color: 'bg-blue-400', label: 'Limpeza', icon: DoorOpen },
-  mecânica: { color: 'bg-yellow-500', label: 'Mecânica', icon: AlertTriangle }
+  vago: { color: 'bg-green-100 border-green-200 text-green-800', label: 'Vago', icon: Bed },
+  ocupado: { color: 'bg-red-100 border-red-200 text-red-800', label: 'Ocupado', icon: User },
+  reservado: { color: 'bg-orange-100 border-orange-200 text-orange-800', label: 'Reservado', icon: Calendar },
+  bloqueado: { color: 'bg-gray-100 border-gray-200 text-gray-800', label: 'Bloqueado', icon: Ban },
+  limpeza: { color: 'bg-blue-100 border-blue-200 text-blue-800', label: 'Limpeza', icon: DoorOpen },
+  mecânica: { color: 'bg-yellow-100 border-yellow-200 text-yellow-800', label: 'Mecânica', icon: AlertTriangle }
 };
 
 const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
@@ -62,7 +62,7 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
     return () => clearInterval(interval);
   }, [leito.dataUltimaAtualizacaoStatus]);
 
-  const temIsolamento = leito.pacienteData?.isolamentosAtivos && leito.pacienteData.isolamentosAtivos.length > 0;
+  const temIsolamento = leito.tipo === 'isolamento' || (leito.pacienteData?.isolamentosAtivos && leito.pacienteData.isolamentosAtivos.length > 0);
 
   const renderAcoes = () => {
     const acoes = [];
@@ -72,8 +72,8 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
         acoes.push(
           <Tooltip key="regular">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-1 h-8 w-8" onClick={() => onAcao('regular', leito.id)}>
-                <UserPlus className="w-4 h-4" />
+              <Button size="sm" variant="ghost" className="p-1 h-6 w-6" onClick={() => onAcao('regular', leito.id)}>
+                <UserPlus className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Regular paciente</p></TooltipContent>
@@ -82,8 +82,8 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
         acoes.push(
           <Tooltip key="bloquear">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-1 h-8 w-8" onClick={() => onAcao('bloquear', leito.id)}>
-                <Ban className="w-4 h-4" />
+              <Button size="sm" variant="ghost" className="p-1 h-6 w-6" onClick={() => onAcao('bloquear', leito.id)}>
+                <Ban className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Bloquear leito</p></TooltipContent>
@@ -95,8 +95,8 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
         acoes.push(
           <Tooltip key="alta">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-1 h-8 w-8" onClick={() => onAcao('alta', leito.id)}>
-                <CheckCircle className="w-4 h-4" />
+              <Button size="sm" variant="ghost" className="p-1 h-6 w-6" onClick={() => onAcao('alta', leito.id)}>
+                <CheckCircle className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Dar alta</p></TooltipContent>
@@ -105,8 +105,8 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
         acoes.push(
           <Tooltip key="remanejar">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-1 h-8 w-8" onClick={() => onAcao('remanejar', leito.id)}>
-                <ArrowUpDown className="w-4 h-4" />
+              <Button size="sm" variant="ghost" className="p-1 h-6 w-6" onClick={() => onAcao('remanejar', leito.id)}>
+                <ArrowUpDown className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Remanejar paciente</p></TooltipContent>
@@ -115,8 +115,8 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
         acoes.push(
           <Tooltip key="detalhes">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-1 h-8 w-8" onClick={() => onAcao('detalhes', leito.id)}>
-                <Eye className="w-4 h-4" />
+              <Button size="sm" variant="ghost" className="p-1 h-6 w-6" onClick={() => onAcao('detalhes', leito.id)}>
+                <Eye className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Ver detalhes</p></TooltipContent>
@@ -128,8 +128,8 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
         acoes.push(
           <Tooltip key="ocupar">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-1 h-8 w-8" onClick={() => onAcao('ocupar', leito.id)}>
-                <CheckCircle className="w-4 h-4" />
+              <Button size="sm" variant="ghost" className="p-1 h-6 w-6" onClick={() => onAcao('ocupar', leito.id)}>
+                <CheckCircle className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Ocupar leito</p></TooltipContent>
@@ -138,8 +138,8 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
         acoes.push(
           <Tooltip key="cancelar">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-1 h-8 w-8" onClick={() => onAcao('cancelarReserva', leito.id)}>
-                <XCircle className="w-4 h-4" />
+              <Button size="sm" variant="ghost" className="p-1 h-6 w-6" onClick={() => onAcao('cancelarReserva', leito.id)}>
+                <XCircle className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Cancelar reserva</p></TooltipContent>
@@ -152,8 +152,8 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
         acoes.push(
           <Tooltip key="liberar">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-1 h-8 w-8" onClick={() => onAcao('liberar', leito.id)}>
-                <DoorOpen className="w-4 h-4" />
+              <Button size="sm" variant="ghost" className="p-1 h-6 w-6" onClick={() => onAcao('liberar', leito.id)}>
+                <DoorOpen className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Liberar leito</p></TooltipContent>
@@ -165,8 +165,8 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
         acoes.push(
           <Tooltip key="liberar">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-1 h-8 w-8" onClick={() => onAcao('liberar', leito.id)}>
-                <DoorOpen className="w-4 h-4" />
+              <Button size="sm" variant="ghost" className="p-1 h-6 w-6" onClick={() => onAcao('liberar', leito.id)}>
+                <DoorOpen className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Liberar leito</p></TooltipContent>
@@ -175,8 +175,8 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
         acoes.push(
           <Tooltip key="editar">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-1 h-8 w-8" onClick={() => onAcao('editarMotivo', leito.id)}>
-                <Edit className="w-4 h-4" />
+              <Button size="sm" variant="ghost" className="p-1 h-6 w-6" onClick={() => onAcao('editarMotivo', leito.id)}>
+                <Edit className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Editar motivo</p></TooltipContent>
@@ -190,24 +190,24 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
 
   return (
     <TooltipProvider>
-      <Card className={`transition-all duration-200 hover:scale-105 hover:shadow-lg border-l-4 ${statusInfo.color}`}>
-        <CardContent className="p-3 space-y-2">
+      <Card className={`transition-all duration-200 hover:scale-105 hover:shadow-md border-l-4 ${statusInfo.color}`}>
+        <CardContent className="p-2 space-y-1">
           {/* Linha 1: Código + Badges PCP/Isolamento */}
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-lg">{leito.codigo}</h3>
+            <h3 className="font-semibold text-sm">{leito.codigo}</h3>
             <div className="flex items-center gap-1">
               {leito.ehPCP && (
-                <Badge variant="secondary" className="text-xs px-1 py-0">PCP</Badge>
+                <Badge variant="secondary" className="text-xs px-1 py-0 h-4">PCP</Badge>
               )}
               {temIsolamento && (
-                <Badge variant="destructive" className="text-xs px-1 py-0">ISO</Badge>
+                <Badge variant="destructive" className="text-xs px-1 py-0 h-4">ISO</Badge>
               )}
             </div>
           </div>
           
           {/* Linha 2: Status + Tempo */}
           <div className="flex items-center justify-between">
-            <Badge className={`${statusInfo.color} text-white text-xs px-2 py-1`}>
+            <Badge className="text-xs px-2 py-0 h-5 bg-transparent border" variant="outline">
               <StatusIcon className="w-3 h-3 mr-1" />
               {statusInfo.label}
             </Badge>
@@ -215,30 +215,27 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
           </div>
           
           {/* Linha 3: Informações do Paciente/Motivo */}
-          <div className="min-h-[20px]">
+          <div className="min-h-[16px] text-xs">
             {leito.status === 'ocupado' && leito.pacienteData && (
-              <div className="text-sm">
+              <div>
                 <p className="font-medium truncate">{leito.pacienteData.nome}</p>
-                <p className="text-xs text-muted-foreground">
-                  {leito.pacienteData.idade} anos, {leito.pacienteData.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                <p className="text-muted-foreground">
+                  {leito.pacienteData.idade} anos, {leito.pacienteData.sexo === 'M' ? 'M' : 'F'}
                 </p>
               </div>
             )}
             
             {leito.status === 'reservado' && leito.pacienteData && (
-              <div className="text-sm">
+              <div>
                 <p className="font-medium truncate">{leito.pacienteData.nome}</p>
-                <p className="text-xs text-muted-foreground">
-                  {leito.pacienteData.idade} anos, {leito.pacienteData.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                <p className="text-muted-foreground">
+                  {leito.pacienteData.idade} anos, {leito.pacienteData.sexo === 'M' ? 'M' : 'F'}
                 </p>
-                {leito.pacienteData.leitoAtual && (
-                  <p className="text-xs text-muted-foreground">Leito atual: {leito.codigo}</p>
-                )}
               </div>
             )}
             
             {leito.status === 'bloqueado' && leito.motivoBloqueio && (
-              <p className="text-sm text-red-600 truncate" title={leito.motivoBloqueio}>
+              <p className="text-red-600 truncate text-xs" title={leito.motivoBloqueio}>
                 {leito.motivoBloqueio}
               </p>
             )}

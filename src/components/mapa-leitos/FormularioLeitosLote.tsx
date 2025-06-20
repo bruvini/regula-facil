@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,7 @@ interface LeitoFormData {
   codigo: string;
   alertas: string[];
   ehPCP: boolean;
-  tipo: 'clínico' | 'crítico' | 'isolamento';
+  ehIsolamento: boolean;
 }
 
 interface FormularioLeitosLoteProps {
@@ -32,27 +32,32 @@ const FormularioLeitosLote = ({ setores, onSalvar, leitoEditando, onEditarLeito 
     codigo: '',
     alertas: [],
     ehPCP: false,
-    tipo: 'clínico'
+    ehIsolamento: false
   }]);
 
-  // Se está editando um leito, inicializar com os dados
-  useState(() => {
+  // Inicializar com dados do leito sendo editado
+  useEffect(() => {
     if (leitoEditando) {
       setLeitos([{
         codigo: leitoEditando.leito.codigo,
         alertas: leitoEditando.leito.alertas || [],
         ehPCP: leitoEditando.leito.ehPCP,
-        tipo: leitoEditando.leito.tipo
+        ehIsolamento: leitoEditando.leito.tipo === 'isolamento'
       }]);
+      
+      // Se estiver editando, pegar o setor do leito
+      if (leitoEditando.leito.setorData?.id) {
+        setSetorSelecionado(leitoEditando.leito.setorData.id);
+      }
     }
-  });
+  }, [leitoEditando]);
 
   const adicionarLeito = () => {
     setLeitos([...leitos, {
       codigo: '',
       alertas: [],
       ehPCP: false,
-      tipo: 'clínico'
+      ehIsolamento: false
     }]);
   };
 
@@ -85,7 +90,7 @@ const FormularioLeitosLote = ({ setores, onSalvar, leitoEditando, onEditarLeito 
           codigo: leitoData.codigo,
           alertas: leitoData.alertas,
           ehPCP: leitoData.ehPCP,
-          tipo: leitoData.tipo
+          tipo: leitoData.ehIsolamento ? 'isolamento' : 'clínico'
         });
       } else {
         // Adicionando novos leitos
@@ -93,7 +98,7 @@ const FormularioLeitosLote = ({ setores, onSalvar, leitoEditando, onEditarLeito 
         const leitosParaSalvar = leitos.map(leito => ({
           codigo: leito.codigo,
           status: 'vago' as const,
-          tipo: leito.tipo,
+          tipo: leito.ehIsolamento ? 'isolamento' as const : 'clínico' as const,
           setor: setorRef,
           ehPCP: leito.ehPCP,
           alertas: leito.alertas
@@ -107,7 +112,7 @@ const FormularioLeitosLote = ({ setores, onSalvar, leitoEditando, onEditarLeito 
           codigo: '',
           alertas: [],
           ehPCP: false,
-          tipo: 'clínico'
+          ehIsolamento: false
         }]);
       }
     } catch (error) {
@@ -164,7 +169,7 @@ const FormularioLeitosLote = ({ setores, onSalvar, leitoEditando, onEditarLeito 
               </div>
 
               {/* Grid de campos */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Código do Leito */}
                 <div className="space-y-2">
                   <Label htmlFor={`codigo-${index}`}>Código *</Label>
@@ -176,35 +181,30 @@ const FormularioLeitosLote = ({ setores, onSalvar, leitoEditando, onEditarLeito 
                   />
                 </div>
 
-                {/* Tipo do Leito */}
-                <div className="space-y-2">
-                  <Label htmlFor={`tipo-${index}`}>Tipo</Label>
-                  <Select
-                    value={leito.tipo}
-                    onValueChange={(valor) => atualizarLeito(index, 'tipo', valor)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="clínico">Clínico</SelectItem>
-                      <SelectItem value="crítico">Crítico</SelectItem>
-                      <SelectItem value="isolamento">Isolamento</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Checkboxes */}
+                {/* Checkboxes - PCP e Isolamento lado a lado */}
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`pcp-${index}`}
-                      checked={leito.ehPCP}
-                      onCheckedChange={(checked) => atualizarLeito(index, 'ehPCP', checked)}
-                    />
-                    <Label htmlFor={`pcp-${index}`} className="text-sm">
-                      É PCP
-                    </Label>
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`pcp-${index}`}
+                        checked={leito.ehPCP}
+                        onCheckedChange={(checked) => atualizarLeito(index, 'ehPCP', checked)}
+                      />
+                      <Label htmlFor={`pcp-${index}`} className="text-sm">
+                        É PCP
+                      </Label>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`isolamento-${index}`}
+                        checked={leito.ehIsolamento}
+                        onCheckedChange={(checked) => atualizarLeito(index, 'ehIsolamento', checked)}
+                      />
+                      <Label htmlFor={`isolamento-${index}`} className="text-sm">
+                        É Isolamento
+                      </Label>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -236,7 +236,7 @@ const FormularioLeitosLote = ({ setores, onSalvar, leitoEditando, onEditarLeito 
           <Button 
             onClick={handleSalvar} 
             className="flex-1"
-            disabled={!setorSelecionado && !leitoEditando || leitos.some(l => !l.codigo.trim())}
+            disabled={(!setorSelecionado && !leitoEditando) || leitos.some(l => !l.codigo.trim())}
           >
             {leitoEditando ? 'Salvar Alterações' : `Adicionar ${leitos.length} Leitos`}
           </Button>
