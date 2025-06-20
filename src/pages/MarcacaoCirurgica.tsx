@@ -37,7 +37,7 @@ const MarcacaoCirurgica = () => {
   const [filtroNome, setFiltroNome] = useState("");
   const [filtroDataInicio, setFiltroDataInicio] = useState<Date>();
   const [filtroDataFim, setFiltroDataFim] = useState<Date>();
-  const [filtroStatus, setFiltroStatus] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState("todos");
   const [pedidosCirurgia, setPedidosCirurgia] = useState<PedidoCirurgia[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -163,7 +163,7 @@ const MarcacaoCirurgica = () => {
       pedido.nomePaciente.toLowerCase().includes(filtroNome.toLowerCase()) ||
       pedido.medicoSolicitante.toLowerCase().includes(filtroNome.toLowerCase());
     
-    const matchStatus = !filtroStatus || pedido.statusSolicitacao === filtroStatus;
+    const matchStatus = filtroStatus === "todos" || pedido.statusSolicitacao === filtroStatus;
     
     let matchData = true;
     if (filtroDataInicio && filtroDataFim) {
@@ -282,7 +282,7 @@ const MarcacaoCirurgica = () => {
                     <SelectValue placeholder="Todos os status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="todos">Todos</SelectItem>
                     <SelectItem value="PENDENTE_LEITO">Pendente Leito</SelectItem>
                     <SelectItem value="LEITO_RESERVADO">Leito Reservado</SelectItem>
                   </SelectContent>
