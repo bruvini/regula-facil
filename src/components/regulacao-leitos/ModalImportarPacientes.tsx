@@ -83,13 +83,13 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
       const setoresSnapshot = await getDocs(collection(db, 'setoresRegulaFacil'));
       const setoresDB = setoresSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...(doc.data() as any)
       }));
 
       const leitosSnapshot = await getDocs(collection(db, 'leitosRegulaFacil'));
       const leitosDB = leitosSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...(doc.data() as any)
       }));
 
       const pacientesValidos: PacienteImportado[] = [];
@@ -115,7 +115,7 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
         const leitoPaciente = linha[6]?.toString().trim();
 
         // Validar setor
-        const setorEncontrado = setoresDB.find(s => s.nomeCompleto === setorPaciente);
+        const setorEncontrado = setoresDB.find((s: any) => s.nomeCompleto === setorPaciente);
         if (!setorEncontrado) {
           if (!errosEncontrados.setoresNaoEncontrados.includes(setorPaciente)) {
             errosEncontrados.setoresNaoEncontrados.push(setorPaciente);
@@ -127,13 +127,13 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
         let leitoEncontrado = null;
         
         // Primeiro, tentar encontrar o leito exato
-        leitoEncontrado = leitosDB.find(l => l.codigo === leitoPaciente);
+        leitoEncontrado = leitosDB.find((l: any) => l.codigo === leitoPaciente);
         
         // Se não encontrou, tentar extrair apenas os números/código do leito
         if (!leitoEncontrado && leitoPaciente) {
           // Remover possível sigla do setor do início
           const codigoLeitoLimpo = leitoPaciente.replace(/^[A-Z\s]+/, '').trim();
-          leitoEncontrado = leitosDB.find(l => l.codigo === codigoLeitoLimpo);
+          leitoEncontrado = leitosDB.find((l: any) => l.codigo === codigoLeitoLimpo);
         }
 
         if (!leitoEncontrado) {
