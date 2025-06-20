@@ -105,7 +105,7 @@ export const useCirurgiasEletivas = () => {
       const leitoRef = doc(db, 'leitosRegulaFacil', leitoId);
       await updateDoc(leitoRef, {
         status: 'reservado',
-        pacienteAtual: nomePaciente,
+        pacienteAtual: nomePaciente, // Salvar nome do paciente, não referência
         dataUltimaAtualizacaoStatus: Timestamp.now()
       });
 

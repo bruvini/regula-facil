@@ -78,12 +78,16 @@ export const useMapaLeitos = () => {
                 }
               }
 
-              // Buscar dados do paciente
+              // Buscar dados do paciente apenas se pacienteAtual for uma referência de documento
               let pacienteData: Paciente | undefined;
-              if (leitoData.pacienteAtual) {
-                const pacienteDoc = await getDoc(leitoData.pacienteAtual);
-                if (pacienteDoc.exists()) {
-                  pacienteData = { id: pacienteDoc.id, ...pacienteDoc.data() } as Paciente;
+              if (leitoData.pacienteAtual && typeof leitoData.pacienteAtual !== 'string') {
+                try {
+                  const pacienteDoc = await getDoc(leitoData.pacienteAtual);
+                  if (pacienteDoc.exists()) {
+                    pacienteData = { id: pacienteDoc.id, ...pacienteDoc.data() } as Paciente;
+                  }
+                } catch (err) {
+                  console.error('Erro ao carregar dados do paciente:', err);
                 }
               }
 

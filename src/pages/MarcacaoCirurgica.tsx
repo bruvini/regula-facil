@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, CalendarIcon, Plus, Search } from "lucide-react";
 import { useState, useEffect } from "react";
-import { collection, addDoc, query, where, getDocs, orderBy, Timestamp } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, orderBy, Timestamp, getDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -69,19 +69,33 @@ const MarcacaoCirurgica = () => {
       const querySnapshot = await getDocs(q);
       console.log('Documentos encontrados:', querySnapshot.size);
       
-      const pedidos = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        console.log('Dados do documento:', doc.id, data);
+      const pedidos = await Promise.all(querySnapshot.docs.map(async docRef => {
+        const data = docRef.data();
+        console.log('Dados do documento:', docRef.id, data);
+        
+        // Buscar código do leito se houver leitoReservado
+        let leitoReservadoCodigo = null;
+        if (data.leitoReservado) {
+          try {
+            const leitoDoc = await getDoc(doc(db, 'leitosRegulaFacil', data.leitoReservado));
+            if (leitoDoc.exists()) {
+              leitoReservadoCodigo = leitoDoc.data().codigo;
+            }
+          } catch (error) {
+            console.error('Erro ao buscar código do leito:', error);
+          }
+        }
         
         return {
-          id: doc.id,
+          id: docRef.id,
           ...data,
           dataNascimentoPaciente: data.dataNascimentoPaciente.toDate(),
           dataPrevistaInternacao: data.dataPrevistaInternacao.toDate(),
           dataPrevistaCirurgia: data.dataPrevistaCirurgia.toDate(),
           dataSolicitacao: data.dataSolicitacao.toDate(),
+          leitoReservado: leitoReservadoCodigo, // Usar o código do leito
         };
-      }) as PedidoCirurgia[];
+      })) as PedidoCirurgia[];
 
       console.log('Pedidos processados:', pedidos);
       setPedidosCirurgia(pedidos);
