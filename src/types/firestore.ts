@@ -22,3 +22,41 @@ export interface LogSistema {
   timestamp: Timestamp;
   descricao: string;
 }
+
+export interface Setor {
+  id: string;
+  nomeCompleto: string;
+  sigla: string;
+  andar: string;
+  tipo: string;
+  alertas: string[];
+}
+
+export interface Leito {
+  id: string;
+  codigo: string;
+  setor: any; // DocumentReference
+  status: 'vago' | 'ocupado' | 'reservado' | 'bloqueado' | 'limpeza' | 'mecânica';
+  tipo: string;
+  ehPCP: boolean;
+  pacienteAtual?: any; // DocumentReference
+  dataUltimaAtualizacaoStatus: Timestamp;
+  motivoBloqueio?: string;
+  alertas: string[];
+}
+
+export interface Paciente {
+  id: string;
+  nome: string;
+  idade: number;
+  sexo: 'M' | 'F';
+  statusInternacao: string;
+  leitoAtual?: any; // DocumentReference
+  regulacaoAtual?: any; // DocumentReference
+  isolamentosAtivos?: string[];
+}
+
+export interface LeitoWithData extends Leito {
+  setorData?: Setor;
+  pacienteData?: Paciente;
+}
