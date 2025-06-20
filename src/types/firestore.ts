@@ -1,41 +1,16 @@
 
-import { DocumentReference, Timestamp } from 'firebase/firestore';
+import { Timestamp } from "firebase/firestore";
 
-export interface Setor {
+export interface Usuario {
   id: string;
-  nomeCompleto: string;
-  sigla: string;
-  andar: string;
-  tipo: 'crítico' | 'clínico' | 'cirúrgico';
-  ehPCP?: boolean;
-  alertas?: string[];
-}
-
-export interface Leito {
-  id: string;
-  codigo: string;
-  status: 'vago' | 'ocupado' | 'bloqueado' | 'reservado' | 'limpeza' | 'mecânica';
-  tipo: 'clínico' | 'crítico' | 'isolamento';
-  setor: DocumentReference;
-  pacienteAtual?: DocumentReference;
-  ehPCP: boolean;
-  alertas: string[];
-  dataUltimaAtualizacaoStatus: Timestamp;
-  motivoBloqueio?: string;
-}
-
-export interface Paciente {
-  id: string;
-  nome: string;
-  sexo: 'M' | 'F';
-  idade: number;
-  dataNascimento: Date;
-  leitoAtual?: DocumentReference;
-  setorAtual?: DocumentReference;
-  statusInternacao: 'internado' | 'alta' | 'óbito';
-  regulacaoAtual?: DocumentReference;
-  isolamentosAtivos: DocumentReference[];
-  cirurgiaAgendada?: DocumentReference;
+  nomeUsuario: string;
+  matriculaUsuario: string;
+  emailUsuario: string;
+  setoresUsuario: string[];
+  tipoPrevilegioUsuario: 'administrador' | 'comum';
+  paginasLiberadas: string[];
+  dataCadastroUsuario: Timestamp;
+  firebaseUid?: string;
 }
 
 export interface LogSistema {
@@ -46,9 +21,4 @@ export interface LogSistema {
   usuario: string;
   timestamp: Timestamp;
   descricao: string;
-}
-
-export interface LeitoWithData extends Leito {
-  setorData?: Setor;
-  pacienteData?: Paciente;
 }
