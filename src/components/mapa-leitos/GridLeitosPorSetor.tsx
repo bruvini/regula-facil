@@ -67,14 +67,7 @@ const agruparLeitosPorQuarto = (leitos: LeitoWithData[]): Quarto[] => {
 
 const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorProps) => {
   // Inicializar todos os setores como colapsados
-  const [setoresColapsados, setSetoresColapsados] = useState<{ [key: string]: boolean }>(() => {
-    const todosColapsados: { [key: string]: boolean } = {};
-    leitosPorSetor.forEach(grupo => {
-      const setorId = grupo.setor.id || 'sem-setor';
-      todosColapsados[setorId] = true;
-    });
-    return todosColapsados;
-  });
+  const [setorExpandido, setSetorExpandido] = useState<string | null>(null);
 
   const calcularTaxaOcupacao = (leitos: LeitoWithData[]) => {
     const leitosDisponiveis = leitos.filter(l => 
@@ -88,10 +81,8 @@ const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorP
   };
 
   const toggleSetor = (setorId: string) => {
-    setSetoresColapsados(prev => ({
-      ...prev,
-      [setorId]: !prev[setorId]
-    }));
+    // Se o setor já está expandido, colapsa. Senão, expande este e colapsa os outros
+    setSetorExpandido(prev => prev === setorId ? null : setorId);
   };
 
   if (leitosPorSetor.length === 0) {
@@ -111,7 +102,7 @@ const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorP
       {leitosPorSetor.map((grupo) => {
         const taxaOcupacao = calcularTaxaOcupacao(grupo.leitos);
         const setorId = grupo.setor.id || 'sem-setor';
-        const isColapsado = setoresColapsados[setorId];
+        const isExpandido = setorExpandido === setorId;
         const quartos = agruparLeitosPorQuarto(grupo.leitos);
         
         return (
@@ -125,10 +116,10 @@ const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorP
                     onClick={() => toggleSetor(setorId)}
                     className="p-1 h-auto"
                   >
-                    {isColapsado ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
+                    {isExpandido ? (
                       <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
                     )}
                   </Button>
                   <div>
@@ -146,25 +137,29 @@ const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorP
                 </div>
               </CardTitle>
             </CardHeader>
-            {!isColapsado && (
+            {isExpandido && (
               <CardContent className="p-4">
                 {quartos.length > 1 ? (
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                     {quartos.map((quarto) => (
-                      <div key={quarto.numero} className="space-y-2">
-                        <h4 className="text-sm font-medium text-muted-foreground border-b pb-1">
-                          {quarto.numero === 'Outros' ? 'Outros Leitos' : `Quarto ${quarto.numero}`}
-                        </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2">
-                          {quarto.leitos.map((leito) => (
-                            <CardLeitoCompacto
-                              key={leito.id}
-                              leito={leito}
-                              onAcao={onAcaoLeito}
-                            />
-                          ))}
-                        </div>
-                      </div>
+                      <Card key={quarto.numero} className="bg-muted/20">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-medium text-muted-foreground">
+                            {quarto.numero === 'Outros' ? 'Outros Leitos' : `Quarto ${quarto.numero}`}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="grid grid-cols-2 gap-2">
+                            {quarto.leitos.map((leito) => (
+                              <CardLeitoCompacto
+                                key={leito.id}
+                                leito={leito}
+                                onAcao={onAcaoLeito}
+                              />
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 ) : (
