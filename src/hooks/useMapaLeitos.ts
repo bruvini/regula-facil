@@ -74,15 +74,14 @@ export const useMapaLeitos = () => {
               if (leitoData.setor) {
                 const setorDoc = await getDoc(leitoData.setor);
                 if (setorDoc.exists()) {
-                  const setorDocData = setorDoc.data();
+                  const setorDocData = setorDoc.data() as any;
                   setorData = {
                     id: setorDoc.id,
-                    sigla: setorDocData.sigla,
-                    nomeCompleto: setorDocData.nomeCompleto,
-                    ativo: setorDocData.ativo,
-                    andar: setorDocData.andar,
-                    tipo: setorDocData.tipo,
-                    alertas: setorDocData.alertas
+                    sigla: setorDocData.sigla || '',
+                    nomeCompleto: setorDocData.nomeCompleto || '',
+                    andar: setorDocData.andar || '',
+                    tipo: setorDocData.tipo || '',
+                    alertas: setorDocData.alertas || []
                   } as Setor;
                 }
               }
@@ -93,14 +92,14 @@ export const useMapaLeitos = () => {
                 try {
                   const pacienteDoc = await getDoc(leitoData.pacienteAtual);
                   if (pacienteDoc.exists()) {
-                    const pacienteDocData = pacienteDoc.data();
+                    const pacienteDocData = pacienteDoc.data() as any;
                     pacienteData = {
                       id: pacienteDoc.id,
-                      nome: pacienteDocData.nome,
-                      idade: pacienteDocData.idade,
-                      sexo: pacienteDocData.sexo,
-                      statusInternacao: pacienteDocData.statusInternacao,
-                      isolamentosAtivos: pacienteDocData.isolamentosAtivos
+                      nome: pacienteDocData.nome || '',
+                      idade: pacienteDocData.idade || 0,
+                      sexo: pacienteDocData.sexo || 'M',
+                      statusInternacao: pacienteDocData.statusInternacao || '',
+                      isolamentosAtivos: pacienteDocData.isolamentosAtivos || []
                     } as Paciente;
                   }
                 } catch (err) {
