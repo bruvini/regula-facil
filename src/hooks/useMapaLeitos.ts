@@ -88,7 +88,16 @@ export const useMapaLeitos = () => {
               }
 
               const result: LeitoWithData = {
-                ...leitoData
+                id: leitoData.id,
+                codigo: leitoData.codigo,
+                setor: leitoData.setor,
+                status: leitoData.status,
+                tipo: leitoData.tipo,
+                ehPCP: leitoData.ehPCP,
+                pacienteAtual: leitoData.pacienteAtual,
+                dataUltimaAtualizacaoStatus: leitoData.dataUltimaAtualizacaoStatus,
+                motivoBloqueio: leitoData.motivoBloqueio,
+                alertas: leitoData.alertas
               };
 
               if (setorData) {

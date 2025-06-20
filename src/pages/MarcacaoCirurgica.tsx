@@ -1,4 +1,3 @@
-
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,26 +57,33 @@ const MarcacaoCirurgica = () => {
 
   const carregarPedidosCirurgia = async () => {
     try {
-      const agora = new Date();
-      const em24Horas = new Date(agora.getTime() + (24 * 60 * 60 * 1000));
-
+      console.log('Carregando pedidos de cirurgia...');
+      
+      // Buscar todos os pedidos com status PENDENTE_LEITO ou LEITO_RESERVADO
       const q = query(
         collection(db, 'pedidosCirurgia'),
         where('statusSolicitacao', 'in', ['PENDENTE_LEITO', 'LEITO_RESERVADO']),
-        where('dataPrevistaCirurgia', '<=', Timestamp.fromDate(em24Horas)),
         orderBy('dataPrevistaCirurgia', 'asc')
       );
 
       const querySnapshot = await getDocs(q);
-      const pedidos = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        dataNascimentoPaciente: doc.data().dataNascimentoPaciente.toDate(),
-        dataPrevistaInternacao: doc.data().dataPrevistaInternacao.toDate(),
-        dataPrevistaCirurgia: doc.data().dataPrevistaCirurgia.toDate(),
-        dataSolicitacao: doc.data().dataSolicitacao.toDate(),
-      })) as PedidoCirurgia[];
+      console.log('Documentos encontrados:', querySnapshot.size);
+      
+      const pedidos = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('Dados do documento:', doc.id, data);
+        
+        return {
+          id: doc.id,
+          ...data,
+          dataNascimentoPaciente: data.dataNascimentoPaciente.toDate(),
+          dataPrevistaInternacao: data.dataPrevistaInternacao.toDate(),
+          dataPrevistaCirurgia: data.dataPrevistaCirurgia.toDate(),
+          dataSolicitacao: data.dataSolicitacao.toDate(),
+        };
+      }) as PedidoCirurgia[];
 
+      console.log('Pedidos processados:', pedidos);
       setPedidosCirurgia(pedidos);
     } catch (error) {
       console.error('Erro ao carregar pedidos de cirurgia:', error);
