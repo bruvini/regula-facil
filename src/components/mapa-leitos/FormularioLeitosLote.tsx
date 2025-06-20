@@ -36,8 +36,8 @@ const FormularioLeitosLote = ({ setores, leitos, onSalvar, leitoEditando, onEdit
     ehIsolamento: false
   }]);
 
-  // Filtrar leitos por setor selecionado
-  const leitosDoSetor = setorSelecionado ? 
+  // Filtrar leitos por setor selecionado - adicionar verificação de segurança
+  const leitosDoSetor = setorSelecionado && leitos ? 
     leitos.filter(leito => leito.setorData?.id === setorSelecionado) : 
     [];
 

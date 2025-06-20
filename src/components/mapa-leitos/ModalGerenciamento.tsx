@@ -234,6 +234,7 @@ const ModalGerenciamento = ({
             {leitoEditando ? (
               <FormularioLeitosLote 
                 setores={setores}
+                leitos={leitos}
                 onSalvar={handleSalvarLeitosLote}
                 leitoEditando={leitoEditando}
                 onEditarLeito={handleEditarLeito}
@@ -241,6 +242,7 @@ const ModalGerenciamento = ({
             ) : (
               <FormularioLeitosLote 
                 setores={setores}
+                leitos={leitos}
                 onSalvar={handleSalvarLeitosLote}
               />
             )}

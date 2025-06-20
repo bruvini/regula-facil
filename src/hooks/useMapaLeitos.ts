@@ -75,11 +75,14 @@ export const useMapaLeitos = () => {
                 const setorDoc = await getDoc(leitoData.setor);
                 if (setorDoc.exists()) {
                   const setorDocData = setorDoc.data();
-                  setorData = { 
-                    id: setorDoc.id, 
+                  setorData = {
+                    id: setorDoc.id,
                     sigla: setorDocData.sigla,
                     nomeCompleto: setorDocData.nomeCompleto,
-                    ativo: setorDocData.ativo
+                    ativo: setorDocData.ativo,
+                    andar: setorDocData.andar,
+                    tipo: setorDocData.tipo,
+                    alertas: setorDocData.alertas
                   } as Setor;
                 }
               }
@@ -91,8 +94,8 @@ export const useMapaLeitos = () => {
                   const pacienteDoc = await getDoc(leitoData.pacienteAtual);
                   if (pacienteDoc.exists()) {
                     const pacienteDocData = pacienteDoc.data();
-                    pacienteData = { 
-                      id: pacienteDoc.id, 
+                    pacienteData = {
+                      id: pacienteDoc.id,
                       nome: pacienteDocData.nome,
                       idade: pacienteDocData.idade,
                       sexo: pacienteDocData.sexo,
