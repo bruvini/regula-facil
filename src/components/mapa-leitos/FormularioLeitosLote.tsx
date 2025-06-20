@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, Edit } from 'lucide-react';
-import { Setor, Leito } from '@/types/firestore';
+import { Setor, Leito, LeitoWithData } from '@/types/firestore';
 import { doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -22,7 +21,7 @@ interface LeitoFormData {
 interface FormularioLeitosLoteProps {
   setores: Setor[];
   onSalvar: (leitos: Array<Omit<Leito, 'id' | 'dataUltimaAtualizacaoStatus'>>) => Promise<void>;
-  leitoEditando?: { leito: Leito; index?: number };
+  leitoEditando?: { leito: LeitoWithData; index?: number };
   onEditarLeito?: (leitoId: string, leitoData: Partial<Leito>) => Promise<void>;
 }
 

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -42,7 +41,7 @@ const ModalGerenciamento = ({
 }: ModalGerenciamentoProps) => {
   const { toast } = useToast();
   const [setorEditando, setSetorEditando] = useState<Setor | undefined>();
-  const [leitoEditando, setLeitoEditando] = useState<{ leito: Leito; index?: number } | undefined>();
+  const [leitoEditando, setLeitoEditando] = useState<{ leito: LeitoWithData; index?: number } | undefined>();
   const [filtroSetorLeitos, setFiltroSetorLeitos] = useState('todos');
 
   const handleSalvarSetor = async (setorData: Omit<Setor, 'id'>) => {
@@ -172,7 +171,6 @@ const ModalGerenciamento = ({
                           <h3 className="font-semibold">{setor.sigla}</h3>
                           <span className="text-muted-foreground">-</span>
                           <span className="text-sm">{setor.nomeCompleto}</span>
-                          {setor.ehPCP && <Badge variant="secondary">PCP</Badge>}
                         </div>
                         {setor.alertas && setor.alertas.length > 0 && (
                           <div className="text-xs text-muted-foreground">

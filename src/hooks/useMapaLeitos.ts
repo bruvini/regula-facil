@@ -91,7 +91,7 @@ export const useMapaLeitos = () => {
                 ...leitoData,
                 setorData,
                 pacienteData
-              } as LeitoWithData;
+              } as Leito & { setorData?: Setor; pacienteData?: Paciente };
             })
           );
 
