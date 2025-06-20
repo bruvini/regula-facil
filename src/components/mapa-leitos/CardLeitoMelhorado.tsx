@@ -31,13 +31,14 @@ const statusConfig = {
   reservado: { color: 'bg-orange-100 border-orange-200 text-orange-800', label: 'Reservado', icon: Calendar },
   bloqueado: { color: 'bg-gray-100 border-gray-200 text-gray-800', label: 'Bloqueado', icon: Ban },
   limpeza: { color: 'bg-blue-100 border-blue-200 text-blue-800', label: 'Limpeza', icon: DoorOpen },
-  mecânica: { color: 'bg-yellow-100 border-yellow-200 text-yellow-800', label: 'Mecânica', icon: AlertTriangle }
+  'mecânica': { color: 'bg-yellow-100 border-yellow-200 text-yellow-800', label: 'Mecânica', icon: AlertTriangle }
 };
 
 const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
   const [tempoDecorrido, setTempoDecorrido] = useState('');
   
-  const statusInfo = statusConfig[leito.status];
+  // Garantir que o status existe na configuração, usar 'vago' como fallback
+  const statusInfo = statusConfig[leito.status] || statusConfig.vago;
   const StatusIcon = statusInfo.icon;
 
   // Atualizar tempo decorrido a cada segundo
@@ -225,12 +226,9 @@ const CardLeitoMelhorado = ({ leito, onAcao }: CardLeitoMelhoradoProps) => {
               </div>
             )}
             
-            {leito.status === 'reservado' && leito.pacienteData && (
+            {leito.status === 'reservado' && leito.pacienteAtual && (
               <div>
-                <p className="font-medium truncate">{leito.pacienteData.nome}</p>
-                <p className="text-muted-foreground">
-                  {leito.pacienteData.idade} anos, {leito.pacienteData.sexo === 'M' ? 'M' : 'F'}
-                </p>
+                <p className="font-medium truncate">{typeof leito.pacienteAtual === 'string' ? leito.pacienteAtual : 'Paciente Reservado'}</p>
               </div>
             )}
             
