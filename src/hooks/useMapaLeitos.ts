@@ -74,7 +74,13 @@ export const useMapaLeitos = () => {
               if (leitoData.setor) {
                 const setorDoc = await getDoc(leitoData.setor);
                 if (setorDoc.exists()) {
-                  setorData = { id: setorDoc.id, ...setorDoc.data() } as Setor;
+                  const setorDocData = setorDoc.data();
+                  setorData = { 
+                    id: setorDoc.id, 
+                    sigla: setorDocData.sigla,
+                    nomeCompleto: setorDocData.nomeCompleto,
+                    ativo: setorDocData.ativo
+                  } as Setor;
                 }
               }
 
@@ -84,7 +90,15 @@ export const useMapaLeitos = () => {
                 try {
                   const pacienteDoc = await getDoc(leitoData.pacienteAtual);
                   if (pacienteDoc.exists()) {
-                    pacienteData = { id: pacienteDoc.id, ...pacienteDoc.data() } as Paciente;
+                    const pacienteDocData = pacienteDoc.data();
+                    pacienteData = { 
+                      id: pacienteDoc.id, 
+                      nome: pacienteDocData.nome,
+                      idade: pacienteDocData.idade,
+                      sexo: pacienteDocData.sexo,
+                      statusInternacao: pacienteDocData.statusInternacao,
+                      isolamentosAtivos: pacienteDocData.isolamentosAtivos
+                    } as Paciente;
                   }
                 } catch (err) {
                   console.error('Erro ao carregar dados do paciente:', err);

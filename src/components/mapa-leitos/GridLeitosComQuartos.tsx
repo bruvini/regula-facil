@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { LeitoWithData } from '@/types/firestore';
-import CardLeitoCompacto from './CardLeitoCompacto2';
+import CardLeitoMelhorado from './CardLeitoMelhorado';
 
-interface GridLeitosPorSetorProps {
+interface GridLeitosComQuartosProps {
   leitosPorSetor: { setor: any; leitos: LeitoWithData[] }[];
   onAcaoLeito: (acao: string, leitoId: string) => void;
 }
@@ -17,6 +17,7 @@ interface Quarto {
 }
 
 const extrairQuarto = (codigoLeito: string): string | null => {
+  // Remover espaços e converter para maiúsculo
   const codigo = codigoLeito.trim().toUpperCase();
   
   // Padrão: números seguidos de letra(s) ou espaço e número (ex: "308 1", "333 L1", "101A")
@@ -55,6 +56,7 @@ const agruparLeitosPorQuarto = (leitos: LeitoWithData[]): Quarto[] => {
       leitos: quartos[numero].sort((a, b) => a.codigo.localeCompare(b.codigo))
     }));
   
+  // Adicionar leitos sem quarto como um "quarto" especial se existirem
   if (leitosSemQuarto.length > 0) {
     quartosOrdenados.push({
       numero: 'Outros',
@@ -65,16 +67,8 @@ const agruparLeitosPorQuarto = (leitos: LeitoWithData[]): Quarto[] => {
   return quartosOrdenados;
 };
 
-const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorProps) => {
-  // Inicializar todos os setores como colapsados
-  const [setoresColapsados, setSetoresColapsados] = useState<{ [key: string]: boolean }>(() => {
-    const todosColapsados: { [key: string]: boolean } = {};
-    leitosPorSetor.forEach(grupo => {
-      const setorId = grupo.setor.id || 'sem-setor';
-      todosColapsados[setorId] = true;
-    });
-    return todosColapsados;
-  });
+const GridLeitosComQuartos = ({ leitosPorSetor, onAcaoLeito }: GridLeitosComQuartosProps) => {
+  const [setoresColapsados, setSetoresColapsados] = useState<{ [key: string]: boolean }>({});
 
   const calcularTaxaOcupacao = (leitos: LeitoWithData[]) => {
     const leitosDisponiveis = leitos.filter(l => 
@@ -93,6 +87,16 @@ const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorP
       [setorId]: !prev[setorId]
     }));
   };
+
+  // Inicializar todos os setores como colapsados
+  useState(() => {
+    const todosColapsados: { [key: string]: boolean } = {};
+    leitosPorSetor.forEach(grupo => {
+      const setorId = grupo.setor.id || 'sem-setor';
+      todosColapsados[setorId] = true;
+    });
+    setSetoresColapsados(todosColapsados);
+  });
 
   if (leitosPorSetor.length === 0) {
     return (
@@ -149,15 +153,16 @@ const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorP
             {!isColapsado && (
               <CardContent className="p-4">
                 {quartos.length > 1 ? (
+                  // Renderizar com agrupamento por quartos
                   <div className="space-y-4">
                     {quartos.map((quarto) => (
                       <div key={quarto.numero} className="space-y-2">
                         <h4 className="text-sm font-medium text-muted-foreground border-b pb-1">
                           {quarto.numero === 'Outros' ? 'Outros Leitos' : `Quarto ${quarto.numero}`}
                         </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
                           {quarto.leitos.map((leito) => (
-                            <CardLeitoCompacto
+                            <CardLeitoMelhorado
                               key={leito.id}
                               leito={leito}
                               onAcao={onAcaoLeito}
@@ -168,9 +173,10 @@ const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorP
                     ))}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2">
+                  // Renderizar sem agrupamento por quartos
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
                     {grupo.leitos.map((leito) => (
-                      <CardLeitoCompacto
+                      <CardLeitoMelhorado
                         key={leito.id}
                         leito={leito}
                         onAcao={onAcaoLeito}
@@ -187,4 +193,4 @@ const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorP
   );
 };
 
-export default GridLeitosPorSetor;
+export default GridLeitosComQuartos;
