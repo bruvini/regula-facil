@@ -78,7 +78,18 @@ const PacientesCirurgiaEletiva = () => {
 
   const handleCancelarReserva = async (paciente: any) => {
     try {
-      await cancelarReserva(paciente.id, paciente.leitoReservado);
+      // Buscar o ID do leito pelo código
+      const leitoEncontrado = leitos.find(leito => leito.codigo === paciente.leitoReservado);
+      if (!leitoEncontrado) {
+        toast({
+          title: "Erro",
+          description: "Leito não encontrado",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      await cancelarReserva(paciente.id, leitoEncontrado.id);
       toast({
         title: "Sucesso",
         description: "Reserva cancelada com sucesso"

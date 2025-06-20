@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, addDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface PedidoCirurgia {
@@ -54,21 +54,34 @@ export const useCirurgiasEletivas = () => {
       );
 
       const querySnapshot = await getDocs(q);
-      const pacientes = querySnapshot.docs.map(doc => {
-        const data = doc.data();
+      const pacientes = await Promise.all(querySnapshot.docs.map(async docRef => {
+        const data = docRef.data();
         const dataNascimento = data.dataNascimentoPaciente.toDate();
         
+        let leitoReservadoCodigo = null;
+        if (data.leitoReservado) {
+          try {
+            const leitoDoc = await getDoc(doc(db, 'leitosRegulaFacil', data.leitoReservado));
+            if (leitoDoc.exists()) {
+              leitoReservadoCodigo = leitoDoc.data().codigo;
+            }
+          } catch (error) {
+            console.error('Erro ao buscar código do leito:', error);
+          }
+        }
+        
         return {
-          id: doc.id,
+          id: docRef.id,
           ...data,
           dataNascimentoPaciente: dataNascimento,
           dataPrevistaInternacao: data.dataPrevistaInternacao.toDate(),
           dataPrevistaCirurgia: data.dataPrevistaCirurgia.toDate(),
           dataSolicitacao: data.dataSolicitacao.toDate(),
           dataReservaLeito: data.dataReservaLeito?.toDate(),
+          leitoReservado: leitoReservadoCodigo,
           idade: calcularIdade(dataNascimento)
         } as PedidoCirurgia;
-      });
+      }));
 
       setPacientesCirurgiaEletiva(pacientes);
     } catch (error) {
@@ -92,7 +105,7 @@ export const useCirurgiasEletivas = () => {
       const leitoRef = doc(db, 'leitosRegulaFacil', leitoId);
       await updateDoc(leitoRef, {
         status: 'reservado',
-        pacienteAtual: `Marcação Cirúrgica - Dr. ${medicoSolicitante}`,
+        pacienteAtual: nomePaciente,
         dataUltimaAtualizacaoStatus: Timestamp.now()
       });
 
