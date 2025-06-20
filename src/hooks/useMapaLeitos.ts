@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDoc, query, where, orderBy, Timestamp, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -88,11 +87,19 @@ export const useMapaLeitos = () => {
                 }
               }
 
-              return {
-                ...leitoData,
-                ...(setorData && { setorData }),
-                ...(pacienteData && { pacienteData })
-              } as LeitoWithData;
+              const result: LeitoWithData = {
+                ...leitoData
+              };
+
+              if (setorData) {
+                result.setorData = setorData;
+              }
+
+              if (pacienteData) {
+                result.pacienteData = pacienteData;
+              }
+
+              return result;
             })
           );
 
