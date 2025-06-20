@@ -26,9 +26,9 @@ const Layout = ({ children }: LayoutProps) => {
     );
   }
 
-  // For all other pages, render with sidebar
+  // For all other pages, render with sidebar collapsed by default
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">

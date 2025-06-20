@@ -37,7 +37,7 @@ export interface Leito {
   codigo: string;
   setor: any; // DocumentReference
   status: 'vago' | 'ocupado' | 'reservado' | 'bloqueado' | 'limpeza' | 'mecânica';
-  tipo: string;
+  tipo: 'clínico' | 'crítico' | 'isolamento';
   ehPCP: boolean;
   pacienteAtual?: any; // DocumentReference
   dataUltimaAtualizacaoStatus: Timestamp;

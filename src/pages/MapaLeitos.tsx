@@ -143,7 +143,8 @@ const MapaLeitos = () => {
           if (!temPacientes) {
             toast({
               title: "Nenhum paciente aguardando regulação no momento.",
-              description: "Não há pacientes internados com regulação pendente."
+              description: "Não há pacientes internados com regulação pendente.",
+              duration: 3000
             });
             return;
           }
@@ -160,14 +161,16 @@ const MapaLeitos = () => {
           await atualizarStatusLeito(leitoId, 'limpeza');
           toast({
             title: "Alta realizada",
-            description: "Paciente recebeu alta e leito liberado para limpeza."
+            description: "Paciente recebeu alta e leito liberado para limpeza.",
+            duration: 2000
           });
           break;
         
         case 'remanejar':
           toast({
             title: "Funcionalidade em desenvolvimento",
-            description: "O remanejamento será implementado em breve."
+            description: "O remanejamento será implementado em breve.",
+            duration: 2000
           });
           break;
         
@@ -175,7 +178,8 @@ const MapaLeitos = () => {
           await atualizarStatusLeito(leitoId, 'ocupado');
           toast({
             title: "Leito ocupado",
-            description: "O leito foi marcado como ocupado."
+            description: "O leito foi marcado como ocupado.",
+            duration: 2000
           });
           break;
         
@@ -183,7 +187,8 @@ const MapaLeitos = () => {
           await atualizarStatusLeito(leitoId, 'vago');
           toast({
             title: "Reserva cancelada",
-            description: "A reserva foi cancelada e o leito liberado."
+            description: "A reserva foi cancelada e o leito liberado.",
+            duration: 2000
           });
           break;
         
@@ -191,21 +196,24 @@ const MapaLeitos = () => {
           await atualizarStatusLeito(leitoId, 'vago');
           toast({
             title: "Leito liberado",
-            description: "O leito foi liberado e está disponível."
+            description: "O leito foi liberado e está disponível.",
+            duration: 2000
           });
           break;
         
         case 'detalhes':
           toast({
             title: "Funcionalidade em desenvolvimento",
-            description: "Os detalhes do paciente serão exibidos em breve."
+            description: "Os detalhes do paciente serão exibidos em breve.",
+            duration: 2000
           });
           break;
         
         case 'editarMotivo':
           toast({
             title: "Funcionalidade em desenvolvimento",
-            description: "A edição de motivo será implementada em breve."
+            description: "A edição de motivo será implementada em breve.",
+            duration: 2000
           });
           break;
         
@@ -217,7 +225,8 @@ const MapaLeitos = () => {
       toast({
         title: "Erro",
         description: "Ocorreu um erro ao executar a ação.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
     }
   };
