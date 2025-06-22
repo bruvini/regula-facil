@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDoc, query, where, orderBy, Timestamp, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -86,15 +87,17 @@ export const useMapaLeitos = () => {
                 }
               }
 
-              // Buscar dados do paciente baseado no leitoAtualPaciente
+              // Buscar dados do paciente usando setorAtualPaciente e leitoAtualPaciente
               let pacienteData: Paciente | undefined;
               if (leitoData.status === 'ocupado' && setorData) {
                 try {
-                  // Buscar paciente que está neste leito
                   const leitoRef = doc(db, 'leitosRegulaFacil', leitoData.id);
+                  const setorRef = doc(db, 'setoresRegulaFacil', setorData.id);
+                  
                   const pacientesQuery = query(
                     collection(db, 'pacientesRegulaFacil'),
-                    where('leitoAtualPaciente', '==', leitoRef)
+                    where('leitoAtualPaciente', '==', leitoRef),
+                    where('setorAtualPaciente', '==', setorRef)
                   );
                   const pacientesSnapshot = await getDocs(pacientesQuery);
                   
@@ -105,7 +108,22 @@ export const useMapaLeitos = () => {
                     // Calcular idade baseado em dataNascimentoPaciente
                     let idade = 0;
                     if (pacienteDocData.dataNascimentoPaciente) {
-                      const dataNasc = new Date(pacienteDocData.dataNascimentoPaciente.toDate());
+                      let dataNasc: Date;
+                      
+                      // Se for um Timestamp do Firestore
+                      if (pacienteDocData.dataNascimentoPaciente.toDate) {
+                        dataNasc = pacienteDocData.dataNascimentoPaciente.toDate();
+                      } 
+                      // Se for uma string no formato dd/mm/yyyy
+                      else if (typeof pacienteDocData.dataNascimentoPaciente === 'string') {
+                        const [dia, mes, ano] = pacienteDocData.dataNascimentoPaciente.split('/');
+                        dataNasc = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+                      }
+                      // Se for um objeto Date
+                      else {
+                        dataNasc = new Date(pacienteDocData.dataNascimentoPaciente);
+                      }
+                      
                       const hoje = new Date();
                       idade = hoje.getFullYear() - dataNasc.getFullYear();
                       const mesAtual = hoje.getMonth();
@@ -122,7 +140,8 @@ export const useMapaLeitos = () => {
                       sexo: pacienteDocData.sexoPaciente || 'M',
                       statusInternacao: pacienteDocData.statusInternacao || '',
                       isolamentosAtivos: pacienteDocData.isolamentosAtivos || [],
-                      especialidade: pacienteDocData.especialidade || ''
+                      especialidade: pacienteDocData.especialidade || '',
+                      statusRegulacao: pacienteDocData.statusRegulacao || ''
                     } as Paciente;
                   }
                 } catch (err) {

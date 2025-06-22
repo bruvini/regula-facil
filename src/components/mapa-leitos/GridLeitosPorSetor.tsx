@@ -88,9 +88,9 @@ const agruparLeitosPorQuarto = (leitos: LeitoWithData[]): Quarto[] => {
 
 const getCorSexoDominante = (sexo: 'M' | 'F' | 'misto' | 'vazio') => {
   switch (sexo) {
-    case 'M': return 'border-l-4 border-blue-400 bg-blue-50/30';
-    case 'F': return 'border-l-4 border-pink-400 bg-pink-50/30';
-    case 'misto': return 'border-l-4 border-orange-400 bg-orange-50/30';
+    case 'M': return 'border-l-4 border-blue-500 bg-blue-50/30';
+    case 'F': return 'border-l-4 border-pink-500 bg-pink-50/30';
+    case 'misto': return 'border-l-4 border-orange-500 bg-orange-50/30';
     default: return 'border-l-4 border-gray-200';
   }
 };

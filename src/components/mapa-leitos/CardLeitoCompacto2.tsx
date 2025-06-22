@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -154,8 +155,8 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
             <TooltipContent>
               <div className="space-y-1 text-sm">
                 <p><strong>Nome:</strong> {leito.pacienteData?.nome || 'Não informado'}</p>
-                <p><strong>Sexo:</strong> {leito.pacienteData?.sexo === 'M' ? 'Masculino' : 'Feminino'}</p>
-                <p><strong>Idade:</strong> {leito.pacienteData?.idade || 'Não informada'} anos</p>
+                <p><strong>Sexo:</strong> {leito.pacienteData?.sexo === 'M' ? 'Masculino' : leito.pacienteData?.sexo === 'F' ? 'Feminino' : 'Não informado'}</p>
+                <p><strong>Idade:</strong> {leito.pacienteData?.idade ? `${leito.pacienteData.idade} anos` : 'Não informada'}</p>
                 {leito.pacienteData?.especialidade && (
                   <p><strong>Especialidade:</strong> {leito.pacienteData.especialidade}</p>
                 )}
@@ -235,7 +236,7 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
             <span className="text-xs text-muted-foreground font-mono">{tempoDecorrido}</span>
           </div>
           
-          {/* Linha 3: Paciente/Motivo - ATUALIZADO */}
+          {/* Linha 3: Paciente/Motivo */}
           <div className="min-h-[12px] text-xs">
             {leito.status === 'ocupado' && leito.pacienteData && (
               <p className="font-medium truncate text-xs" title={leito.pacienteData.nome}>

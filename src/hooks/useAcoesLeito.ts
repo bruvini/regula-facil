@@ -42,7 +42,8 @@ export const useAcoesLeito = () => {
         // Atualizar status do paciente
         await updateDoc(pacienteDoc.ref, {
           statusInternacao: 'alta',
-          leitoAtualPaciente: null
+          leitoAtualPaciente: null,
+          setorAtualPaciente: null
         });
       }
 
