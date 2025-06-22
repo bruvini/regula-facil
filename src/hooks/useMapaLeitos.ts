@@ -86,20 +86,43 @@ export const useMapaLeitos = () => {
                 }
               }
 
-              // Buscar dados do paciente apenas se pacienteAtual for uma referência de documento
+              // Buscar dados do paciente baseado no leitoAtualPaciente
               let pacienteData: Paciente | undefined;
-              if (leitoData.pacienteAtual && typeof leitoData.pacienteAtual !== 'string') {
+              if (leitoData.status === 'ocupado' && setorData) {
                 try {
-                  const pacienteDoc = await getDoc(leitoData.pacienteAtual);
-                  if (pacienteDoc.exists()) {
-                    const pacienteDocData = pacienteDoc.data() as any;
+                  // Buscar paciente que está neste leito
+                  const leitoRef = doc(db, 'leitosRegulaFacil', leitoData.id);
+                  const pacientesQuery = query(
+                    collection(db, 'pacientesRegulaFacil'),
+                    where('leitoAtualPaciente', '==', leitoRef)
+                  );
+                  const pacientesSnapshot = await getDocs(pacientesQuery);
+                  
+                  if (!pacientesSnapshot.empty) {
+                    const pacienteDoc = pacientesSnapshot.docs[0];
+                    const pacienteDocData = pacienteDoc.data();
+                    
+                    // Calcular idade baseado em dataNascimentoPaciente
+                    let idade = 0;
+                    if (pacienteDocData.dataNascimentoPaciente) {
+                      const dataNasc = new Date(pacienteDocData.dataNascimentoPaciente.toDate());
+                      const hoje = new Date();
+                      idade = hoje.getFullYear() - dataNasc.getFullYear();
+                      const mesAtual = hoje.getMonth();
+                      const mesNasc = dataNasc.getMonth();
+                      if (mesAtual < mesNasc || (mesAtual === mesNasc && hoje.getDate() < dataNasc.getDate())) {
+                        idade--;
+                      }
+                    }
+                    
                     pacienteData = {
                       id: pacienteDoc.id,
-                      nome: pacienteDocData.nome || '',
-                      idade: pacienteDocData.idade || 0,
-                      sexo: pacienteDocData.sexo || 'M',
+                      nome: pacienteDocData.nomePaciente || '',
+                      idade: idade,
+                      sexo: pacienteDocData.sexoPaciente || 'M',
                       statusInternacao: pacienteDocData.statusInternacao || '',
-                      isolamentosAtivos: pacienteDocData.isolamentosAtivos || []
+                      isolamentosAtivos: pacienteDocData.isolamentosAtivos || [],
+                      especialidade: pacienteDocData.especialidade || ''
                     } as Paciente;
                   }
                 } catch (err) {

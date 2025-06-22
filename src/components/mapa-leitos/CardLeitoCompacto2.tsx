@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -81,7 +80,7 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
 
   const handleRemanejamento = async () => {
     if (leito.pacienteData) {
-      await solicitarRemanejamento(leito.pacienteData.id, leito.pacienteData.nome);
+      await solicitarRemanejamento(leito.id, leito.pacienteData.nome);
     }
   };
 
@@ -236,10 +235,12 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
             <span className="text-xs text-muted-foreground font-mono">{tempoDecorrido}</span>
           </div>
           
-          {/* Linha 3: Paciente/Motivo */}
+          {/* Linha 3: Paciente/Motivo - ATUALIZADO */}
           <div className="min-h-[12px] text-xs">
             {leito.status === 'ocupado' && leito.pacienteData && (
-              <p className="font-medium truncate text-xs">{leito.pacienteData.nome}</p>
+              <p className="font-medium truncate text-xs" title={leito.pacienteData.nome}>
+                {leito.pacienteData.nome}
+              </p>
             )}
             
             {leito.status === 'reservado' && leito.pacienteAtual && (

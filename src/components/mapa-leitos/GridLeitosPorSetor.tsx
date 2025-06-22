@@ -88,10 +88,10 @@ const agruparLeitosPorQuarto = (leitos: LeitoWithData[]): Quarto[] => {
 
 const getCorSexoDominante = (sexo: 'M' | 'F' | 'misto' | 'vazio') => {
   switch (sexo) {
-    case 'M': return 'border-l-4 border-blue-400';
-    case 'F': return 'border-l-4 border-pink-400';
-    case 'misto': return 'border-l-4 border-orange-400';
-    default: return '';
+    case 'M': return 'border-l-4 border-blue-400 bg-blue-50/30';
+    case 'F': return 'border-l-4 border-pink-400 bg-pink-50/30';
+    case 'misto': return 'border-l-4 border-orange-400 bg-orange-50/30';
+    default: return 'border-l-4 border-gray-200';
   }
 };
 
@@ -170,7 +170,7 @@ const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorP
                 {quartos.length > 1 ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                     {quartos.map((quarto) => (
-                      <Card key={quarto.numero} className={`bg-muted/20 ${getCorSexoDominante(quarto.sexoDominante)}`}>
+                      <Card key={quarto.numero} className={`${getCorSexoDominante(quarto.sexoDominante)}`}>
                         <CardHeader className="pb-2">
                           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
                             <span>{quarto.numero === 'Outros' ? 'Outros Leitos' : `Quarto ${quarto.numero}`}</span>
