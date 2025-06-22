@@ -64,7 +64,7 @@ export const usePacientesUTI = () => {
             if (pacienteData.setorAtualPaciente) {
               const setorDoc = await getDoc(pacienteData.setorAtualPaciente);
               if (setorDoc.exists()) {
-                const setorData = setorDoc.data();
+                const setorData = setorDoc.data() as any;
                 setorAtual = {
                   id: setorDoc.id,
                   sigla: setorData?.sigla || '',
@@ -78,7 +78,7 @@ export const usePacientesUTI = () => {
             if (pacienteData.leitoAtualPaciente) {
               const leitoDoc = await getDoc(pacienteData.leitoAtualPaciente);
               if (leitoDoc.exists()) {
-                const leitoData = leitoDoc.data();
+                const leitoData = leitoDoc.data() as any;
                 leitoAtual = {
                   id: leitoDoc.id,
                   codigo: leitoData?.codigo || ''
@@ -146,7 +146,7 @@ export const usePacientesUTI = () => {
         const leitosSnapshot = await getDocs(leitosQuery);
         
         leitosSnapshot.docs.forEach(leitoDoc => {
-          const leitoData = leitoDoc.data();
+          const leitoData = leitoDoc.data() as any;
           leitosUTI.push({
             id: leitoDoc.id,
             codigo: leitoData?.codigo || '',
