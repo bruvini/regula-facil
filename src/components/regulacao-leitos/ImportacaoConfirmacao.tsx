@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -66,7 +65,7 @@ const ImportacaoConfirmacao = ({ dadosValidados, onVoltar, onFinalizar }: Import
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     carregarPacientesRemovidos();
   }, []);
 
@@ -103,7 +102,17 @@ const ImportacaoConfirmacao = ({ dadosValidados, onVoltar, onFinalizar }: Import
 
       const setoresDB = setoresSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const leitosDB = leitosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const pacientesExistentes = pacientesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const pacientesExistentes = pacientesSnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      })) as Array<{
+        id: string;
+        nomePaciente?: string;
+        leitoAtualPaciente?: string;
+        setorAtualPaciente?: string;
+        statusInternacao?: string;
+        [key: string]: any;
+      }>;
 
       setProgresso(10);
       setMensagemProgresso('Processando pacientes da planilha...');
@@ -125,7 +134,7 @@ const ImportacaoConfirmacao = ({ dadosValidados, onVoltar, onFinalizar }: Import
         if (!setor || !leito) continue;
 
         // Verificar se paciente já existe
-        const pacienteExistente = pacientesExistentes.find((p: any) => 
+        const pacienteExistente = pacientesExistentes.find((p) => 
           p.nomePaciente?.toLowerCase() === pacientePlanilha.nomePaciente.toLowerCase()
         );
 
