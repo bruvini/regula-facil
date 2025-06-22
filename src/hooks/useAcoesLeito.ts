@@ -23,6 +23,109 @@ export const useAcoesLeito = () => {
     }
   };
 
+  const adicionarLogPaciente = async (tipo: string, pacienteId: string, leitoId: string, setorId: string, descricao: string) => {
+    try {
+      await addDoc(collection(db, 'logsPacientesRegulaFacil'), {
+        tipo,
+        pacienteId,
+        leitoId,
+        setorId,
+        timestamp: Timestamp.now(),
+        usuario: 'Usuário Atual',
+        descricao
+      });
+    } catch (err) {
+      console.error('Erro ao adicionar log do paciente:', err);
+    }
+  };
+
+  const sinalizarAguardandoUTI = async (leitoId: string, pacienteId: string, nomePaciente: string, setorId: string) => {
+    setLoading(true);
+    try {
+      // Atualizar campos do paciente
+      const pacienteRef = doc(db, 'pacientesRegulaFacil', pacienteId);
+      await updateDoc(pacienteRef, {
+        aguardaUTI: true,
+        dataPedidoUTI: Timestamp.now()
+      });
+
+      // Registrar log do sistema
+      await adicionarLog(
+        'Sinalizar aguardando UTI',
+        leitoId,
+        `Paciente ${nomePaciente} sinalizado como aguardando UTI`
+      );
+
+      // Registrar log do paciente
+      await adicionarLogPaciente(
+        'pedido_uti',
+        pacienteId,
+        leitoId,
+        setorId,
+        `Paciente ${nomePaciente} sinalizado como aguardando UTI`
+      );
+
+      toast({
+        title: "UTI solicitada",
+        description: `${nomePaciente} foi sinalizado como aguardando UTI.`,
+        duration: 3000
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Erro ao sinalizar aguardando UTI:', err);
+      toast({
+        title: "Erro ao sinalizar UTI",
+        description: "Ocorreu um erro ao processar a solicitação.",
+        variant: "destructive",
+        duration: 3000
+      });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelarPedidoUTI = async (pacienteId: string, nomePaciente: string, motivo: string) => {
+    setLoading(true);
+    try {
+      // Remover campos do paciente
+      const pacienteRef = doc(db, 'pacientesRegulaFacil', pacienteId);
+      await updateDoc(pacienteRef, {
+        aguardaUTI: false,
+        dataPedidoUTI: null
+      });
+
+      // Registrar log do paciente
+      await adicionarLogPaciente(
+        'cancelamento_uti',
+        pacienteId,
+        '',
+        '',
+        `Pedido de UTI cancelado para ${nomePaciente}. Motivo: ${motivo}`
+      );
+
+      toast({
+        title: "Pedido cancelado",
+        description: `Pedido de UTI cancelado para ${nomePaciente}.`,
+        duration: 3000
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Erro ao cancelar pedido UTI:', err);
+      toast({
+        title: "Erro ao cancelar pedido",
+        description: "Ocorreu um erro ao cancelar o pedido.",
+        variant: "destructive",
+        duration: 3000
+      });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const darAlta = async (leitoId: string, pacienteId: string, nomePaciente: string) => {
     setLoading(true);
     try {
@@ -43,7 +146,9 @@ export const useAcoesLeito = () => {
         await updateDoc(pacienteDoc.ref, {
           statusInternacao: 'alta',
           leitoAtualPaciente: null,
-          setorAtualPaciente: null
+          setorAtualPaciente: null,
+          aguardaUTI: false,
+          dataPedidoUTI: null
         });
       }
 
@@ -137,6 +242,8 @@ export const useAcoesLeito = () => {
   return {
     loading,
     darAlta,
-    solicitarRemanejamento
+    solicitarRemanejamento,
+    sinalizarAguardandoUTI,
+    cancelarPedidoUTI
   };
 };

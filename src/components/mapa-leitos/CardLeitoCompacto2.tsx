@@ -16,7 +16,8 @@ import {
   Edit,
   Eye,
   UserPlus,
-  Ban
+  Ban,
+  Cross
 } from 'lucide-react';
 import { LeitoWithData } from '@/types/firestore';
 import ModalConfirmacaoAlta from './ModalConfirmacaoAlta';
@@ -39,10 +40,13 @@ const statusConfig = {
 const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
   const [tempoDecorrido, setTempoDecorrido] = useState('');
   const [modalAltaAberto, setModalAltaAberto] = useState(false);
-  const { loading, darAlta, solicitarRemanejamento } = useAcoesLeito();
+  const { loading, darAlta, solicitarRemanejamento, sinalizarAguardandoUTI } = useAcoesLeito();
   
   const statusInfo = statusConfig[leito.status] || statusConfig.vago;
   const StatusIcon = statusInfo.icon;
+
+  // Verificar se o setor é UTI
+  const ehSetorUTI = leito.setorData?.nomeCompleto === 'UTI';
 
   // Atualizar tempo decorrido a cada minuto
   useEffect(() => {
@@ -82,6 +86,17 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
   const handleRemanejamento = async () => {
     if (leito.pacienteData) {
       await solicitarRemanejamento(leito.id, leito.pacienteData.nome);
+    }
+  };
+
+  const handleAguardandoUTI = async () => {
+    if (leito.pacienteData && leito.setorData) {
+      await sinalizarAguardandoUTI(
+        leito.id, 
+        leito.pacienteData.id, 
+        leito.pacienteData.nome,
+        leito.setorData.id
+      );
     }
   };
 
@@ -145,6 +160,27 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
             <TooltipContent><p>Remanejar</p></TooltipContent>
           </Tooltip>
         );
+        
+        // Adicionar botão UTI apenas se não for setor UTI
+        if (!ehSetorUTI) {
+          acoes.push(
+            <Tooltip key="uti">
+              <TooltipTrigger asChild>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="p-0.5 h-5 w-5 text-red-600" 
+                  onClick={handleAguardandoUTI}
+                  disabled={loading}
+                >
+                  <Cross className="w-3 h-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Sinalizar Aguardando UTI</p></TooltipContent>
+            </Tooltip>
+          );
+        }
+        
         acoes.push(
           <Tooltip key="detalhes">
             <TooltipTrigger asChild>
