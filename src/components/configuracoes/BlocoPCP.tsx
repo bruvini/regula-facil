@@ -98,7 +98,7 @@ const BlocoPCP = () => {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           Configuração PCP (Plano de Capacidade Plena)
-          <Button onClick={() => setAdicionando(true)} disabled={adicionando || editandoId}>
+          <Button onClick={() => setAdicionando(true)} disabled={Boolean(adicionando || editandoId)}>
             <Plus className="w-4 h-4 mr-2" />
             Novo Nível
           </Button>
@@ -249,7 +249,7 @@ const BlocoPCP = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => iniciarEdicao(config)}
-                      disabled={adicionando || editandoId}
+                      disabled={Boolean(adicionando || editandoId)}
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
@@ -257,7 +257,7 @@ const BlocoPCP = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => excluirConfiguracao(config.id)}
-                      disabled={adicionando || editandoId}
+                      disabled={Boolean(adicionando || editandoId)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
