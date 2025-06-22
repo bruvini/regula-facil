@@ -19,13 +19,17 @@ export const useDadosPCP = (configuracoesPCP: ConfiguracaoPCP[], leitos: LeitoWi
 
   const calcularDadosPCP = async () => {
     try {
-      // Buscar pacientes nos setores específicos
+      console.log('Calculando dados PCP...', { configuracoesPCP: configuracoesPCP.length, leitos: leitos.length });
+
+      // Buscar pacientes internados
       const pacientesQuery = query(
         collection(db, 'pacientesRegulaFacil'),
         where('statusInternacao', '==', 'internado')
       );
       
       const pacientesSnapshot = await getDocs(pacientesQuery);
+      console.log('Pacientes internados encontrados:', pacientesSnapshot.size);
+      
       let pacientesDCL = 0;
       let pacientesDCX = 0;
       let pacientesSalaLaranja = 0;
@@ -33,20 +37,27 @@ export const useDadosPCP = (configuracoesPCP: ConfiguracaoPCP[], leitos: LeitoWi
 
       for (const pacienteDoc of pacientesSnapshot.docs) {
         const pacienteData = pacienteDoc.data();
+        
         if (pacienteData.setorAtualPaciente) {
-          const setorDoc = await getDocs(query(
-            collection(db, 'setoresRegulaFacil'),
-            where('__name__', '==', pacienteData.setorAtualPaciente.id)
-          ));
-          
-          if (!setorDoc.empty) {
-            const setorData = setorDoc.docs[0].data();
-            const siglaSetor = setorData.sigla;
+          try {
+            const setorDoc = await getDocs(query(
+              collection(db, 'setoresRegulaFacil'),
+              where('__name__', '==', pacienteData.setorAtualPaciente.id)
+            ));
             
-            if (siglaSetor === 'PS DECISÃO CLÍNICA') pacientesDCL++;
-            else if (siglaSetor === 'PS DECISÃO CIRÚRGICA') pacientesDCX++;
-            else if (siglaSetor === 'SALA LARANJA') pacientesSalaLaranja++;
-            else if (siglaSetor === 'SALA DE EMERGENCIA') pacientesSalaEmergencia++;
+            if (!setorDoc.empty) {
+              const setorData = setorDoc.docs[0].data();
+              const siglaSetor = setorData.sigla;
+              
+              console.log('Paciente no setor:', siglaSetor);
+              
+              if (siglaSetor === 'PS DECISÃO CLÍNICA') pacientesDCL++;
+              else if (siglaSetor === 'PS DECISÃO CIRÚRGICA') pacientesDCX++;
+              else if (siglaSetor === 'SALA LARANJA') pacientesSalaLaranja++;
+              else if (siglaSetor === 'SALA DE EMERGENCIA') pacientesSalaEmergencia++;
+            }
+          } catch (err) {
+            console.error('Erro ao buscar setor do paciente:', err);
           }
         }
       }
@@ -62,11 +73,33 @@ export const useDadosPCP = (configuracoesPCP: ConfiguracaoPCP[], leitos: LeitoWi
       ).length;
 
       const totalPacientes = pacientesDCL + pacientesDCX;
+      
+      console.log('Dados calculados:', {
+        totalPacientes,
+        pacientesDCL,
+        pacientesDCX,
+        pacientesPCP,
+        pacientesSalaLaranja,
+        pacientesSalaEmergencia,
+        salasBloqueadas
+      });
 
       // Determinar nível atual baseado no total de pacientes
-      const nivelAtual = configuracoesPCP.find(config => 
-        totalPacientes >= config.qtdMinimaPCP && totalPacientes <= config.qtdMaximaPCP
-      ) || null;
+      let nivelAtual: ConfiguracaoPCP | null = null;
+      
+      if (configuracoesPCP.length > 0) {
+        // Ordenar configurações por ordem
+        const configsOrdenadas = [...configuracoesPCP].sort((a, b) => a.ordem - b.ordem);
+        
+        for (const config of configsOrdenadas) {
+          if (totalPacientes >= config.qtdMinimaPCP && totalPacientes <= config.qtdMaximaPCP) {
+            nivelAtual = config;
+            break;
+          }
+        }
+        
+        console.log('Nível PCP determinado:', nivelAtual?.nomeNivelPCP || 'Nenhum nível encontrado');
+      }
 
       setDadosPCP({
         nivelAtual,
@@ -86,6 +119,7 @@ export const useDadosPCP = (configuracoesPCP: ConfiguracaoPCP[], leitos: LeitoWi
 
   useEffect(() => {
     if (configuracoesPCP.length > 0) {
+      console.log('Configurações PCP carregadas, recalculando dados...');
       calcularDadosPCP();
     }
   }, [configuracoesPCP, leitos]);

@@ -59,7 +59,12 @@ ${dadosPCP.nivelAtual.orientacoesNivelPCP.map(orientacao => `✅ ${orientacao}`)
             <div>
               <p className="text-sm text-muted-foreground">PCP</p>
               <p className="text-lg font-bold">Nível não configurado</p>
-              <p className="text-xs text-muted-foreground">{dadosPCP.totalPacientes} pacientes</p>
+              <p className="text-xs text-muted-foreground">
+                {dadosPCP.totalPacientes} pacientes (DCL: {dadosPCP.pacientesDCL}, DCX: {dadosPCP.pacientesDCX})
+              </p>
+              <p className="text-xs text-yellow-600 mt-1">
+                Configure os níveis PCP em Configurações
+              </p>
             </div>
           </div>
         </CardContent>
