@@ -54,6 +54,8 @@ export interface Paciente {
   leitoAtual?: any; // DocumentReference
   regulacaoAtual?: any; // DocumentReference
   isolamentosAtivos?: string[];
+  especialidade?: string;
+  statusRegulacao?: string;
 }
 
 export interface LeitoWithData extends Leito {

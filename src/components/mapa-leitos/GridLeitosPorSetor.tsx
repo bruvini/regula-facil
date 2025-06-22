@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { LeitoWithData } from '@/types/firestore';
 import CardLeitoCompacto from './CardLeitoCompacto2';
 
@@ -14,22 +15,37 @@ interface GridLeitosPorSetorProps {
 interface Quarto {
   numero: string;
   leitos: LeitoWithData[];
+  sexoDominante: 'M' | 'F' | 'misto' | 'vazio';
 }
 
 const extrairQuarto = (codigoLeito: string): string | null => {
   const codigo = codigoLeito.trim().toUpperCase();
   
-  // Padrão: números seguidos de letra(s) ou espaço e número (ex: "308 1", "333 L1", "101A")
   const match = codigo.match(/^(\d+)[\s\-_]?([A-Z]*\d*)?/);
   if (match) {
     const numeroQuarto = match[1];
-    // Se tem 3 dígitos ou mais, considerar como quarto
     if (numeroQuarto.length >= 3) {
       return numeroQuarto;
     }
   }
   
   return null;
+};
+
+const determinarSexoDominante = (leitos: LeitoWithData[]): 'M' | 'F' | 'misto' | 'vazio' => {
+  const leitosOcupados = leitos.filter(l => l.status === 'ocupado' && l.pacienteData);
+  
+  if (leitosOcupados.length === 0) return 'vazio';
+  
+  const sexos = leitosOcupados.map(l => l.pacienteData?.sexo).filter(Boolean);
+  const masculinos = sexos.filter(s => s === 'M').length;
+  const femininos = sexos.filter(s => s === 'F').length;
+  
+  if (masculinos > 0 && femininos > 0) return 'misto';
+  if (masculinos > 0) return 'M';
+  if (femininos > 0) return 'F';
+  
+  return 'vazio';
 };
 
 const agruparLeitosPorQuarto = (leitos: LeitoWithData[]): Quarto[] => {
@@ -50,23 +66,36 @@ const agruparLeitosPorQuarto = (leitos: LeitoWithData[]): Quarto[] => {
   
   const quartosOrdenados: Quarto[] = Object.keys(quartos)
     .sort()
-    .map(numero => ({
-      numero,
-      leitos: quartos[numero].sort((a, b) => a.codigo.localeCompare(b.codigo))
-    }));
+    .map(numero => {
+      const leitosQuarto = quartos[numero].sort((a, b) => a.codigo.localeCompare(b.codigo));
+      return {
+        numero,
+        leitos: leitosQuarto,
+        sexoDominante: determinarSexoDominante(leitosQuarto)
+      };
+    });
   
   if (leitosSemQuarto.length > 0) {
     quartosOrdenados.push({
       numero: 'Outros',
-      leitos: leitosSemQuarto.sort((a, b) => a.codigo.localeCompare(b.codigo))
+      leitos: leitosSemQuarto.sort((a, b) => a.codigo.localeCompare(b.codigo)),
+      sexoDominante: determinarSexoDominante(leitosSemQuarto)
     });
   }
   
   return quartosOrdenados;
 };
 
+const getCorSexoDominante = (sexo: 'M' | 'F' | 'misto' | 'vazio') => {
+  switch (sexo) {
+    case 'M': return 'border-l-4 border-blue-400';
+    case 'F': return 'border-l-4 border-pink-400';
+    case 'misto': return 'border-l-4 border-orange-400';
+    default: return '';
+  }
+};
+
 const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorProps) => {
-  // Inicializar todos os setores como colapsados
   const [setorExpandido, setSetorExpandido] = useState<string | null>(null);
 
   const calcularTaxaOcupacao = (leitos: LeitoWithData[]) => {
@@ -81,7 +110,6 @@ const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorP
   };
 
   const toggleSetor = (setorId: string) => {
-    // Se o setor já está expandido, colapsa. Senão, expande este e colapsa os outros
     setSetorExpandido(prev => prev === setorId ? null : setorId);
   };
 
@@ -142,10 +170,16 @@ const GridLeitosPorSetor = ({ leitosPorSetor, onAcaoLeito }: GridLeitosPorSetorP
                 {quartos.length > 1 ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                     {quartos.map((quarto) => (
-                      <Card key={quarto.numero} className="bg-muted/20">
+                      <Card key={quarto.numero} className={`bg-muted/20 ${getCorSexoDominante(quarto.sexoDominante)}`}>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium text-muted-foreground">
-                            {quarto.numero === 'Outros' ? 'Outros Leitos' : `Quarto ${quarto.numero}`}
+                          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+                            <span>{quarto.numero === 'Outros' ? 'Outros Leitos' : `Quarto ${quarto.numero}`}</span>
+                            {quarto.sexoDominante === 'misto' && (
+                              <Badge variant="destructive" className="text-xs flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" />
+                                Sexo misto
+                              </Badge>
+                            )}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0">

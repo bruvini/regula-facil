@@ -19,6 +19,8 @@ import {
   Ban
 } from 'lucide-react';
 import { LeitoWithData } from '@/types/firestore';
+import ModalConfirmacaoAlta from './ModalConfirmacaoAlta';
+import { useAcoesLeito } from '@/hooks/useAcoesLeito';
 
 interface CardLeitoCompactoProps {
   leito: LeitoWithData;
@@ -36,11 +38,13 @@ const statusConfig = {
 
 const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
   const [tempoDecorrido, setTempoDecorrido] = useState('');
+  const [modalAltaAberto, setModalAltaAberto] = useState(false);
+  const { loading, darAlta, solicitarRemanejamento } = useAcoesLeito();
   
   const statusInfo = statusConfig[leito.status] || statusConfig.vago;
   const StatusIcon = statusInfo.icon;
 
-  // Atualizar tempo decorrido a cada minuto (mais leve)
+  // Atualizar tempo decorrido a cada minuto
   useEffect(() => {
     const calcularTempo = () => {
       const agora = new Date();
@@ -59,12 +63,27 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
     setTempoDecorrido(calcularTempo());
     const interval = setInterval(() => {
       setTempoDecorrido(calcularTempo());
-    }, 60000); // Atualizar a cada minuto
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [leito.dataUltimaAtualizacaoStatus]);
 
   const temIsolamento = leito.tipo === 'isolamento' || (leito.pacienteData?.isolamentosAtivos && leito.pacienteData.isolamentosAtivos.length > 0);
+
+  const handleConfirmarAlta = async () => {
+    if (leito.pacienteData) {
+      const sucesso = await darAlta(leito.id, leito.pacienteData.id, leito.pacienteData.nome);
+      if (sucesso) {
+        setModalAltaAberto(false);
+      }
+    }
+  };
+
+  const handleRemanejamento = async () => {
+    if (leito.pacienteData) {
+      await solicitarRemanejamento(leito.pacienteData.id, leito.pacienteData.nome);
+    }
+  };
 
   const renderAcoes = () => {
     const acoes = [];
@@ -97,11 +116,33 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
         acoes.push(
           <Tooltip key="alta">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-0.5 h-5 w-5" onClick={() => onAcao('alta', leito.id)}>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="p-0.5 h-5 w-5" 
+                onClick={() => setModalAltaAberto(true)}
+                disabled={loading}
+              >
                 <CheckCircle className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent><p>Alta</p></TooltipContent>
+          </Tooltip>
+        );
+        acoes.push(
+          <Tooltip key="remanejar">
+            <TooltipTrigger asChild>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="p-0.5 h-5 w-5" 
+                onClick={handleRemanejamento}
+                disabled={loading}
+              >
+                <ArrowUpDown className="w-3 h-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>Remanejar</p></TooltipContent>
           </Tooltip>
         );
         acoes.push(
@@ -111,7 +152,16 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
                 <Eye className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent><p>Ver detalhes</p></TooltipContent>
+            <TooltipContent>
+              <div className="space-y-1 text-sm">
+                <p><strong>Nome:</strong> {leito.pacienteData?.nome || 'Não informado'}</p>
+                <p><strong>Sexo:</strong> {leito.pacienteData?.sexo === 'M' ? 'Masculino' : 'Feminino'}</p>
+                <p><strong>Idade:</strong> {leito.pacienteData?.idade || 'Não informada'} anos</p>
+                {leito.pacienteData?.especialidade && (
+                  <p><strong>Especialidade:</strong> {leito.pacienteData.especialidade}</p>
+                )}
+              </div>
+            </TooltipContent>
           </Tooltip>
         );
         break;
@@ -175,11 +225,13 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
             </div>
           </div>
           
-          {/* Linha 2: Status */}
+          {/* Linha 2: Status + Tempo */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <StatusIcon className="w-2.5 h-2.5" />
-              <span className="text-xs">{statusInfo.label}</span>
+              {leito.status !== 'ocupado' && (
+                <span className="text-xs">{statusInfo.label}</span>
+              )}
             </div>
             <span className="text-xs text-muted-foreground font-mono">{tempoDecorrido}</span>
           </div>
@@ -207,6 +259,14 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
           </div>
         </CardContent>
       </Card>
+
+      <ModalConfirmacaoAlta
+        aberto={modalAltaAberto}
+        onFechar={() => setModalAltaAberto(false)}
+        nomePaciente={leito.pacienteData?.nome || 'Paciente'}
+        onConfirmar={handleConfirmarAlta}
+        loading={loading}
+      />
     </TooltipProvider>
   );
 };
