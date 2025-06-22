@@ -21,6 +21,13 @@ export const useDadosPCP = (configuracoesPCP: ConfiguracaoPCP[], leitos: LeitoWi
     try {
       console.log('Calculando dados PCP...', { configuracoesPCP: configuracoesPCP.length, leitos: leitos.length });
 
+      // Buscar todos os setores para criar um mapa de referência
+      const setoresSnapshot = await getDocs(collection(db, 'setoresRegulaFacil'));
+      const setoresMap = new Map();
+      setoresSnapshot.docs.forEach(doc => {
+        setoresMap.set(doc.id, doc.data());
+      });
+
       // Buscar pacientes internados
       const pacientesQuery = query(
         collection(db, 'pacientesRegulaFacil'),
@@ -38,26 +45,17 @@ export const useDadosPCP = (configuracoesPCP: ConfiguracaoPCP[], leitos: LeitoWi
       for (const pacienteDoc of pacientesSnapshot.docs) {
         const pacienteData = pacienteDoc.data();
         
-        if (pacienteData.setorAtualPaciente) {
-          try {
-            const setorDoc = await getDocs(query(
-              collection(db, 'setoresRegulaFacil'),
-              where('__name__', '==', pacienteData.setorAtualPaciente.id)
-            ));
+        if (pacienteData.setorAtualPaciente?.id) {
+          const setorData = setoresMap.get(pacienteData.setorAtualPaciente.id);
+          
+          if (setorData?.sigla) {
+            const siglaSetor = setorData.sigla;
+            console.log('Paciente no setor:', siglaSetor);
             
-            if (!setorDoc.empty) {
-              const setorData = setorDoc.docs[0].data();
-              const siglaSetor = setorData.sigla;
-              
-              console.log('Paciente no setor:', siglaSetor);
-              
-              if (siglaSetor === 'PS DECISÃO CLÍNICA') pacientesDCL++;
-              else if (siglaSetor === 'PS DECISÃO CIRÚRGICA') pacientesDCX++;
-              else if (siglaSetor === 'SALA LARANJA') pacientesSalaLaranja++;
-              else if (siglaSetor === 'SALA DE EMERGENCIA') pacientesSalaEmergencia++;
-            }
-          } catch (err) {
-            console.error('Erro ao buscar setor do paciente:', err);
+            if (siglaSetor === 'PS DECISÃO CLÍNICA') pacientesDCL++;
+            else if (siglaSetor === 'PS DECISÃO CIRÚRGICA') pacientesDCX++;
+            else if (siglaSetor === 'SALA LARANJA') pacientesSalaLaranja++;
+            else if (siglaSetor === 'SALA DE EMERGENCIA') pacientesSalaEmergencia++;
           }
         }
       }
@@ -72,6 +70,7 @@ export const useDadosPCP = (configuracoesPCP: ConfiguracaoPCP[], leitos: LeitoWi
         leito.setorData?.sigla === 'CC - SALAS CIRURGICAS' && leito.status === 'bloqueado'
       ).length;
 
+      // Total de pacientes é a soma de DCL + DCX
       const totalPacientes = pacientesDCL + pacientesDCX;
       
       console.log('Dados calculados:', {
