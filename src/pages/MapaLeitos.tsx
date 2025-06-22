@@ -1,9 +1,11 @@
-
 import { useState, useMemo } from 'react';
 import Layout from "@/components/Layout";
 import { Card, CardContent } from '@/components/ui/card';
 import { useMapaLeitos } from '@/hooks/useMapaLeitos';
+import { useConfiguracaoPCP } from '@/hooks/useConfiguracaoPCP';
+import { useDadosPCP } from '@/hooks/useDadosPCP';
 import IndicadoresBar from '@/components/mapa-leitos/IndicadoresBar';
+import CardPCP from '@/components/mapa-leitos/CardPCP';
 import FiltrosLeitos from '@/components/mapa-leitos/FiltrosLeitos';
 import FiltrosAvancados from '@/components/mapa-leitos/FiltrosAvancados';
 import GridLeitosPorSetor from '@/components/mapa-leitos/GridLeitosPorSetor';
@@ -32,6 +34,8 @@ const MapaLeitos = () => {
     adicionarLeitosEmLote,
     verificarPacientesAguardandoRegulacao
   } = useMapaLeitos();
+  const { configuracoes: configuracoesPCP } = useConfiguracaoPCP();
+  const { dadosPCP } = useDadosPCP(configuracoesPCP, leitos);
   const { toast } = useToast();
   
   const [filtros, setFiltros] = useState({
@@ -266,7 +270,14 @@ const MapaLeitos = () => {
           </div>
         </div>
 
-        <IndicadoresBar leitos={leitosFiltrados} />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
+          <div className="lg:col-span-4">
+            <IndicadoresBar leitos={leitosFiltrados} />
+          </div>
+          <div className="lg:col-span-1">
+            <CardPCP dadosPCP={dadosPCP} />
+          </div>
+        </div>
 
         <Card className="mb-6">
           <CardContent className="p-4">

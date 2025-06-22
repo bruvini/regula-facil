@@ -2,6 +2,7 @@
 import Layout from "@/components/Layout";
 import { Settings } from "lucide-react";
 import BlocoUsuarios from "@/components/configuracoes/BlocoUsuarios";
+import BlocoPCP from "@/components/configuracoes/BlocoPCP";
 
 const Configuracoes = () => {
   return (
@@ -15,6 +16,9 @@ const Configuracoes = () => {
 
         {/* Bloco de Usuários */}
         <BlocoUsuarios />
+
+        {/* Bloco de PCP */}
+        <BlocoPCP />
       </div>
     </Layout>
   );
