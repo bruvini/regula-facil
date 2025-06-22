@@ -67,8 +67,8 @@ export const usePacientesUTI = () => {
                 const setorData = setorDoc.data();
                 setorAtual = {
                   id: setorDoc.id,
-                  sigla: setorData.sigla,
-                  nomeCompleto: setorData.nomeCompleto
+                  sigla: setorData?.sigla || '',
+                  nomeCompleto: setorData?.nomeCompleto || ''
                 };
               }
             }
@@ -81,7 +81,7 @@ export const usePacientesUTI = () => {
                 const leitoData = leitoDoc.data();
                 leitoAtual = {
                   id: leitoDoc.id,
-                  codigo: leitoData.codigo
+                  codigo: leitoData?.codigo || ''
                 };
               }
             }
@@ -149,7 +149,7 @@ export const usePacientesUTI = () => {
           const leitoData = leitoDoc.data();
           leitosUTI.push({
             id: leitoDoc.id,
-            codigo: leitoData.codigo,
+            codigo: leitoData?.codigo || '',
             setorId: setorDoc.id
           });
         });
