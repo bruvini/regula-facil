@@ -1,5 +1,5 @@
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -43,6 +43,9 @@ const ModalDetalhesPaciente = ({ aberto, onFechar, paciente }: ModalDetalhesPaci
       <DialogContent className="max-w-4xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Detalhes do Paciente - {paciente.nomePaciente}</DialogTitle>
+          <DialogDescription>
+            Visualizar todas as informações detalhadas do paciente selecionado
+          </DialogDescription>
         </DialogHeader>
         
         <ScrollArea className="max-h-[60vh] pr-4">

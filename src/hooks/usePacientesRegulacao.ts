@@ -37,29 +37,42 @@ export const usePacientesRegulacao = () => {
     
     let dataNasc: Date;
     
-    // Se for um Timestamp do Firestore
-    if (dataNascimento.toDate) {
-      dataNasc = dataNascimento.toDate();
-    } 
-    // Se for uma string no formato dd/mm/yyyy
-    else if (typeof dataNascimento === 'string') {
-      const [dia, mes, ano] = dataNascimento.split('/');
-      dataNasc = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+    try {
+      // Se for um Timestamp do Firestore
+      if (dataNascimento && typeof dataNascimento === 'object' && dataNascimento.toDate) {
+        dataNasc = dataNascimento.toDate();
+      } 
+      // Se for uma string no formato dd/mm/yyyy
+      else if (typeof dataNascimento === 'string') {
+        const [dia, mes, ano] = dataNascimento.split('/');
+        dataNasc = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+      }
+      // Se for um objeto Date
+      else {
+        dataNasc = new Date(dataNascimento);
+      }
+      
+      const hoje = new Date();
+      let idade = hoje.getFullYear() - dataNasc.getFullYear();
+      const mesAtual = hoje.getMonth();
+      const mesNasc = dataNasc.getMonth();
+      if (mesAtual < mesNasc || (mesAtual === mesNasc && hoje.getDate() < dataNasc.getDate())) {
+        idade--;
+      }
+      
+      return idade;
+    } catch (error) {
+      console.error('Erro ao calcular idade:', error);
+      return 0;
     }
-    // Se for um objeto Date
-    else {
-      dataNasc = new Date(dataNascimento);
-    }
-    
-    const hoje = new Date();
-    let idade = hoje.getFullYear() - dataNasc.getFullYear();
-    const mesAtual = hoje.getMonth();
-    const mesNasc = dataNasc.getMonth();
-    if (mesAtual < mesNasc || (mesAtual === mesNasc && hoje.getDate() < dataNasc.getDate())) {
-      idade--;
-    }
-    
-    return idade;
+  };
+
+  // Verificar se é uma referência do Firestore
+  const isFirestoreReference = (value: any) => {
+    return value && 
+           typeof value === 'object' && 
+           value.constructor && 
+           value.constructor.name === 'DocumentReference';
   };
 
   // Carregar pacientes aguardando regulação
@@ -79,14 +92,51 @@ export const usePacientesRegulacao = () => {
             
             // Buscar dados do setor atual
             let setorAtual = null;
+            
             if (pacienteData.setorAtualPaciente) {
-              const setorDoc = await getDoc(pacienteData.setorAtualPaciente);
-              if (setorDoc.exists()) {
-                const setorData = setorDoc.data() as any;
+              try {
+                // Verificar se é uma referência do Firestore
+                if (isFirestoreReference(pacienteData.setorAtualPaciente)) {
+                  const setorDoc = await getDoc(pacienteData.setorAtualPaciente);
+                  if (setorDoc.exists()) {
+                    const setorData = setorDoc.data() as any;
+                    setorAtual = {
+                      id: setorDoc.id,
+                      sigla: setorData?.sigla || '',
+                      nomeCompleto: setorData?.nomeCompleto || ''
+                    };
+                  }
+                } else {
+                  // Se não for uma referência, pode ser um ID ou string
+                  console.log('setorAtualPaciente não é uma referência Firestore:', pacienteData.setorAtualPaciente);
+                  
+                  // Tentar como ID do documento
+                  if (typeof pacienteData.setorAtualPaciente === 'string') {
+                    const setorDoc = await getDoc(doc(db, 'setores', pacienteData.setorAtualPaciente));
+                    if (setorDoc.exists()) {
+                      const setorData = setorDoc.data() as any;
+                      setorAtual = {
+                        id: setorDoc.id,
+                        sigla: setorData?.sigla || '',
+                        nomeCompleto: setorData?.nomeCompleto || ''
+                      };
+                    } else {
+                      // Se não encontrar como documento, usar o valor como nome do setor
+                      setorAtual = {
+                        id: 'unknown',
+                        sigla: pacienteData.setorAtualPaciente,
+                        nomeCompleto: pacienteData.setorAtualPaciente
+                      };
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('Erro ao buscar dados do setor:', error);
+                // Fallback: usar o valor como nome do setor
                 setorAtual = {
-                  id: setorDoc.id,
-                  sigla: setorData?.sigla || '',
-                  nomeCompleto: setorData?.nomeCompleto || ''
+                  id: 'error',
+                  sigla: String(pacienteData.setorAtualPaciente || 'Setor Desconhecido'),
+                  nomeCompleto: String(pacienteData.setorAtualPaciente || 'Setor Desconhecido')
                 };
               }
             }
