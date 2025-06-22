@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Upload, FileText, CheckCircle, AlertTriangle, Copy, X } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Upload, FileText, CheckCircle, AlertTriangle, Copy, X, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import { collection, getDocs, addDoc, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import ModalInstrucoesImportacao from './ModalInstrucoesImportacao';
 
 interface PacienteImportado {
   nomePaciente: string;
@@ -36,6 +38,7 @@ interface ModalImportarPacientesProps {
 const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProps) => {
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [processando, setProcessando] = useState(false);
+  const [progresso, setProgresso] = useState(0);
   const [dadosValidados, setDadosValidados] = useState<PacienteImportado[]>([]);
   const [erros, setErros] = useState<ErrosValidacao>({
     setoresNaoEncontrados: [],
@@ -48,6 +51,7 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
     totalErros: 0
   });
   const [etapa, setEtapa] = useState<'upload' | 'validacao' | 'sucesso'>('upload');
+  const [modalInstrucoesAberto, setModalInstrucoesAberto] = useState(false);
   const { toast } = useToast();
 
   const setoresRegulacao = [
@@ -69,28 +73,37 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
     if (!arquivo) return;
 
     setProcessando(true);
+    setProgresso(0);
+    
     try {
       // Ler arquivo Excel
+      setProgresso(10);
       const arrayBuffer = await arquivo.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const dados = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
+      setProgresso(20);
+      
       // Pular as 3 primeiras linhas e processar a partir da linha 4
       const linhasProcessar = dados.slice(3);
       
       // Buscar setores e leitos do banco
+      setProgresso(30);
       const setoresSnapshot = await getDocs(collection(db, 'setoresRegulaFacil'));
       const setoresDB = setoresSnapshot.docs.map(doc => ({
         id: doc.id,
         ...(doc.data() as any)
       }));
 
+      setProgresso(40);
       const leitosSnapshot = await getDocs(collection(db, 'leitosRegulaFacil'));
       const leitosDB = leitosSnapshot.docs.map(doc => ({
         id: doc.id,
         ...(doc.data() as any)
       }));
+
+      setProgresso(50);
 
       const pacientesValidos: PacienteImportado[] = [];
       const errosEncontrados: ErrosValidacao = {
@@ -99,16 +112,24 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
         pacientesComTeste: []
       };
 
-      for (const linha of linhasProcessar) {
+      const totalLinhas = linhasProcessar.length;
+      
+      for (let i = 0; i < linhasProcessar.length; i++) {
+        const linha = linhasProcessar[i];
+        
+        // Atualizar progresso durante o processamento
+        const progressoAtual = 50 + ((i / totalLinhas) * 40);
+        setProgresso(Math.round(progressoAtual));
+        
         // Ignorar linhas vazias
         if (!linha[0] || linha[0].toString().trim() === '') continue;
 
         const nomePaciente = linha[0]?.toString().trim();
         
-        // Ignorar pacientes com "teste" no nome
+        // Ignorar pacientes com "teste" no nome (apenas contar para estatística, não como erro)
         if (nomePaciente?.toLowerCase().includes('teste')) {
           errosEncontrados.pacientesComTeste.push(nomePaciente);
-          continue;
+          continue; // Simplesmente ignora e continua
         }
 
         const setorPaciente = linha[4]?.toString().trim();
@@ -162,10 +183,11 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
         pacientesValidos.push(paciente);
       }
 
-      // Calcular estatísticas
+      setProgresso(90);
+
+      // Calcular estatísticas (agora pacientes com "teste" não são considerados erros que impedem importação)
       const totalErros = errosEncontrados.setoresNaoEncontrados.length + 
-                        errosEncontrados.leitosNaoEncontrados.length + 
-                        errosEncontrados.pacientesComTeste.length;
+                        errosEncontrados.leitosNaoEncontrados.length;
 
       const pacientesAguardando = pacientesValidos.filter(p => p.statusRegulacao === 'AGUARDANDO_REGULACAO').length;
 
@@ -177,6 +199,7 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
         totalErros
       });
 
+      setProgresso(100);
       setEtapa('validacao');
     } catch (error) {
       console.error('Erro ao processar arquivo:', error);
@@ -187,6 +210,7 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
       });
     } finally {
       setProcessando(false);
+      setProgresso(0);
     }
   };
 
@@ -201,14 +225,23 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
     }
 
     setProcessando(true);
+    setProgresso(0);
+    
     try {
+      const totalPacientes = dadosValidados.length;
+      
       // Salvar cada paciente no banco
-      for (const paciente of dadosValidados) {
+      for (let i = 0; i < dadosValidados.length; i++) {
+        const paciente = dadosValidados[i];
         await addDoc(collection(db, 'pacientesRegulaFacil'), {
           ...paciente,
           statusInternacao: 'internado',
           dataCriacao: new Date()
         });
+        
+        // Atualizar progresso
+        const progressoAtual = ((i + 1) / totalPacientes) * 100;
+        setProgresso(Math.round(progressoAtual));
       }
 
       setEtapa('sucesso');
@@ -224,6 +257,7 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
       });
     } finally {
       setProcessando(false);
+      setProgresso(0);
     }
   };
 
@@ -235,7 +269,7 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
       'LEITOS NÃO ENCONTRADOS:',
       ...erros.leitosNaoEncontrados,
       '',
-      'PACIENTES COM "TESTE" NO NOME:',
+      'PACIENTES COM "TESTE" NO NOME (IGNORADOS):',
       ...erros.pacientesComTeste
     ].join('\n');
 
@@ -251,6 +285,7 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
     setErros({ setoresNaoEncontrados: [], leitosNaoEncontrados: [], pacientesComTeste: [] });
     setEstatisticas({ totalRegistros: 0, pacientesAguardandoRegulacao: 0, totalErros: 0 });
     setEtapa('upload');
+    setProgresso(0);
   };
 
   const handleFechar = () => {
@@ -259,183 +294,229 @@ const ModalImportarPacientes = ({ aberto, onFechar }: ModalImportarPacientesProp
   };
 
   return (
-    <Dialog open={aberto} onOpenChange={handleFechar}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Importar Pacientes</DialogTitle>
-        </DialogHeader>
-
-        {etapa === 'upload' && (
-          <div className="space-y-4">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <div className="space-y-2">
-                <p className="text-lg font-medium">Selecione o arquivo Excel</p>
-                <p className="text-sm text-muted-foreground">
-                  Arquivo .xls ou .xlsx com os dados dos pacientes
-                </p>
-                <input
-                  type="file"
-                  accept=".xls,.xlsx"
-                  onChange={handleUploadArquivo}
-                  className="hidden"
-                  id="arquivo-upload"
-                />
-                <label htmlFor="arquivo-upload">
-                  <Button variant="outline" className="cursor-pointer" asChild>
-                    <span>Escolher Arquivo</span>
-                  </Button>
-                </label>
-              </div>
-            </div>
-
-            {arquivo && (
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-500" />
-                  <span className="font-medium">{arquivo.name}</span>
-                </div>
-                <Button onClick={processarArquivo} disabled={processando}>
-                  {processando ? 'Processando...' : 'Processar Arquivo'}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {etapa === 'validacao' && (
-          <div className="space-y-6">
-            {/* Estatísticas */}
-            <div className="grid grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Total de Registros</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-blue-600">{estatisticas.totalRegistros}</p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Aguardando Regulação</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-orange-600">{estatisticas.pacientesAguardandoRegulacao}</p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Total de Erros</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-red-600">{estatisticas.totalErros}</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Erros encontrados */}
-            {estatisticas.totalErros > 0 && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-2">
-                    <p className="font-medium">Erros encontrados que precisam ser corrigidos:</p>
-                    
-                    {erros.setoresNaoEncontrados.length > 0 && (
-                      <div>
-                        <p className="font-medium text-sm">Setores não encontrados ({erros.setoresNaoEncontrados.length}):</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {erros.setoresNaoEncontrados.map((setor, index) => (
-                            <Badge key={index} variant="destructive" className="text-xs">
-                              {setor}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {erros.leitosNaoEncontrados.length > 0 && (
-                      <div>
-                        <p className="font-medium text-sm">Leitos não encontrados ({erros.leitosNaoEncontrados.length}):</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {erros.leitosNaoEncontrados.map((leito, index) => (
-                            <Badge key={index} variant="destructive" className="text-xs">
-                              {leito}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {erros.pacientesComTeste.length > 0 && (
-                      <div>
-                        <p className="font-medium text-sm">Pacientes com "teste" no nome ({erros.pacientesComTeste.length}):</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {erros.pacientesComTeste.map((paciente, index) => (
-                            <Badge key={index} variant="destructive" className="text-xs">
-                              {paciente}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <Button 
-                      onClick={copiarErrosParaAreaTransferencia}
-                      variant="outline" 
-                      size="sm" 
-                      className="mt-2"
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copiar Lista de Erros
-                    </Button>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Botões de ação */}
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={resetarModal}>
-                Importar Novo Arquivo
+    <>
+      <Dialog open={aberto} onOpenChange={handleFechar}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              Importar Pacientes
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setModalInstrucoesAberto(true)}
+                className="flex items-center gap-2"
+              >
+                <HelpCircle className="h-4 w-4" />
+                Como Baixar Planilha
               </Button>
-              
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleFechar}>
-                  Cancelar
+            </DialogTitle>
+          </DialogHeader>
+
+          {etapa === 'upload' && (
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <div className="space-y-2">
+                  <p className="text-lg font-medium">Selecione o arquivo Excel</p>
+                  <p className="text-sm text-muted-foreground">
+                    Arquivo .xls ou .xlsx com os dados dos pacientes
+                  </p>
+                  <input
+                    type="file"
+                    accept=".xls,.xlsx"
+                    onChange={handleUploadArquivo}
+                    className="hidden"
+                    id="arquivo-upload"
+                  />
+                  <label htmlFor="arquivo-upload">
+                    <Button variant="outline" className="cursor-pointer" asChild>
+                      <span>Escolher Arquivo</span>
+                    </Button>
+                  </label>
+                </div>
+              </div>
+
+              {arquivo && (
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-blue-500" />
+                    <span className="font-medium">{arquivo.name}</span>
+                  </div>
+                  <Button onClick={processarArquivo} disabled={processando}>
+                    {processando ? 'Processando...' : 'Processar Arquivo'}
+                  </Button>
+                </div>
+              )}
+
+              {processando && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Processando arquivo...</span>
+                    <span>{progresso}%</span>
+                  </div>
+                  <Progress value={progresso} className="w-full" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {etapa === 'validacao' && (
+            <div className="space-y-6">
+              {/* Estatísticas */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Total de Registros</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-blue-600">{estatisticas.totalRegistros}</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Aguardando Regulação</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-orange-600">{estatisticas.pacientesAguardandoRegulacao}</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Erros Críticos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-red-600">{estatisticas.totalErros}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Informações sobre pacientes ignorados */}
+              {erros.pacientesComTeste.length > 0 && (
+                <Alert className="border-yellow-200 bg-yellow-50">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription>
+                    <p className="font-medium text-yellow-800">
+                      {erros.pacientesComTeste.length} pacientes com "teste" no nome foram ignorados automaticamente
+                    </p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      Estes pacientes não serão importados, conforme configurado no sistema.
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Erros encontrados */}
+              {estatisticas.totalErros > 0 && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      <p className="font-medium">Erros críticos encontrados que precisam ser corrigidos:</p>
+                      
+                      {erros.setoresNaoEncontrados.length > 0 && (
+                        <div>
+                          <p className="font-medium text-sm">Setores não encontrados ({erros.setoresNaoEncontrados.length}):</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {erros.setoresNaoEncontrados.map((setor, index) => (
+                              <Badge key={index} variant="destructive" className="text-xs">
+                                {setor}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {erros.leitosNaoEncontrados.length > 0 && (
+                        <div>
+                          <p className="font-medium text-sm">Leitos não encontrados ({erros.leitosNaoEncontrados.length}):</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {erros.leitosNaoEncontrados.map((leito, index) => (
+                              <Badge key={index} variant="destructive" className="text-xs">
+                                {leito}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <Button 
+                        onClick={copiarErrosParaAreaTransferencia}
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2"
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copiar Lista de Erros
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Progress bar durante salvamento */}
+              {processando && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Salvando pacientes...</span>
+                    <span>{progresso}%</span>
+                  </div>
+                  <Progress value={progresso} className="w-full" />
+                </div>
+              )}
+
+              {/* Botões de ação */}
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={resetarModal}>
+                  Importar Novo Arquivo
                 </Button>
-                <Button 
-                  onClick={salvarPacientes} 
-                  disabled={estatisticas.totalErros > 0 || processando}
-                  className="min-w-[120px]"
-                >
-                  {processando ? 'Salvando...' : 'Salvar Pacientes'}
-                </Button>
+                
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleFechar}>
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={salvarPacientes} 
+                    disabled={estatisticas.totalErros > 0 || processando}
+                    className="min-w-[120px]"
+                  >
+                    {processando ? 'Salvando...' : 'Salvar Pacientes'}
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {etapa === 'sucesso' && (
-          <div className="text-center space-y-4 py-8">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
-            <div>
-              <h3 className="text-lg font-semibold text-green-700">
-                Importação Concluída com Sucesso!
-              </h3>
-              <p className="text-muted-foreground">
-                {estatisticas.totalRegistros} pacientes foram importados para o sistema.
-              </p>
+          {etapa === 'sucesso' && (
+            <div className="text-center space-y-4 py-8">
+              <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
+              <div>
+                <h3 className="text-lg font-semibol text-green-700">
+                  Importação Concluída com Sucesso!
+                </h3>
+                <p className="text-muted-foreground">
+                  {estatisticas.totalRegistros} pacientes foram importados para o sistema.
+                </p>
+                {erros.pacientesComTeste.length > 0 && (
+                  <p className="text-sm text-yellow-600 mt-2">
+                    {erros.pacientesComTeste.length} pacientes com "teste" no nome foram ignorados.
+                  </p>
+                )}
+              </div>
+              <Button onClick={handleFechar}>
+                Fechar
+              </Button>
             </div>
-            <Button onClick={handleFechar}>
-              Fechar
-            </Button>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <ModalInstrucoesImportacao 
+        aberto={modalInstrucoesAberto}
+        onFechar={() => setModalInstrucoesAberto(false)}
+      />
+    </>
   );
 };
 
