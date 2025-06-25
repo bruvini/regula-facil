@@ -9,6 +9,7 @@ import { useState } from "react";
 import ModalGerenciarIsolamentos from "@/components/ccih-nhe/ModalGerenciarIsolamentos";
 import ModalIncluirIsolamento from "@/components/ccih-nhe/ModalIncluirIsolamento";
 import MultiSelectIsolamentos from "@/components/ccih-nhe/MultiSelectIsolamentos";
+import PacientesVigilancia from "@/components/ccih-nhe/PacientesVigilancia";
 
 const CCIHNHE = () => {
   const [busca, setBusca] = useState("");
@@ -178,22 +179,8 @@ const CCIHNHE = () => {
           </CardContent>
         </Card>
 
-        {/* Pacientes em Vigilância */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="h-5 w-5" />
-              Pacientes em Vigilância
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              <Eye className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-              <p className="text-lg mb-2">Lista de Vigilância em Desenvolvimento</p>
-              <p>A listagem de pacientes em vigilância epidemiológica será implementada em breve.</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Pacientes em Vigilância - Novo componente */}
+        <PacientesVigilancia />
 
         {/* Modal de Gerenciar Isolamentos */}
         <ModalGerenciarIsolamentos 
