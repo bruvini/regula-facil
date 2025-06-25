@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc, addDoc, Timestamp, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, addDoc, Timestamp, query, where, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -110,7 +110,7 @@ const PacientesVigilancia = () => {
           for (const isolamento of paciente.isolamentosAtivos) {
             try {
               const pacienteRef = doc(db, 'pacientesRegulaFacil', paciente.id);
-              const pacienteDoc = await pacienteRef.get();
+              const pacienteDoc = await getDoc(pacienteRef);
               
               if (pacienteDoc.exists()) {
                 const dados = pacienteDoc.data();
