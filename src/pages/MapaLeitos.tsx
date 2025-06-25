@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Layout from "@/components/Layout";
+import LoadingOverlay from "@/components/LoadingOverlay";
 import { Card, CardContent } from '@/components/ui/card';
 import { useMapaLeitos } from '@/hooks/useMapaLeitos';
 import { useConfiguracaoPCP } from '@/hooks/useConfiguracaoPCP';
 import { useDadosPCP } from '@/hooks/useDadosPCP';
+import { useLoadingOverlay } from "@/hooks/useLoadingOverlay";
 import IndicadoresBar from '@/components/mapa-leitos/IndicadoresBar';
 import CardPCP from '@/components/mapa-leitos/CardPCP';
 import FiltrosLeitos from '@/components/mapa-leitos/FiltrosLeitos';
@@ -16,6 +18,8 @@ import { LeitoWithData } from '@/types/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 const MapaLeitos = () => {
+  const { isLoading: overlayLoading, setLoading } = useLoadingOverlay(true);
+  
   const { 
     leitos, 
     setores, 
@@ -54,6 +58,13 @@ const MapaLeitos = () => {
   const [modalRegulacaoAberto, setModalRegulacaoAberto] = useState(false);
   const [modalBloqueioAberto, setModalBloqueioAberto] = useState(false);
   const [leitoSelecionado, setLeitoSelecionado] = useState<string>('');
+
+  // Controlar loading overlay
+  useEffect(() => {
+    if (!loading && leitos.length > 0) {
+      setLoading(false);
+    }
+  }, [loading, leitos, setLoading]);
 
   // Filtrar leitos
   const leitosFiltrados = useMemo(() => {
@@ -138,6 +149,7 @@ const MapaLeitos = () => {
     return Object.values(grupos);
   }, [leitosFiltrados]);
 
+  // Handle acao leito
   const handleAcaoLeito = async (acao: string, leitoId: string) => {
     try {
       switch (acao) {
@@ -235,16 +247,6 @@ const MapaLeitos = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-96">
-          <p className="text-lg">Carregando mapa de leitos...</p>
-        </div>
-      </Layout>
-    );
-  }
-
   if (error) {
     return (
       <Layout>
@@ -257,6 +259,7 @@ const MapaLeitos = () => {
 
   return (
     <Layout>
+      <LoadingOverlay isLoading={overlayLoading} />
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>

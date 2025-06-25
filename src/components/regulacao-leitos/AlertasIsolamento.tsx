@@ -80,18 +80,27 @@ const AlertasIsolamento = () => {
     );
   };
 
+  const normalizarIsolamento = (isolamento: string): string => {
+    return isolamento.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  };
+
   const isolamentosSaoIguais = (isolamentos1: Isolamento[], isolamentos2: Isolamento[]): boolean => {
-    if (isolamentos1.length !== isolamentos2.length) return false;
+    if (!isolamentos1 || !isolamentos2 || isolamentos1.length !== isolamentos2.length) return false;
     
-    const nomes1 = isolamentos1.map(iso => iso.nomeIsolamento).sort();
-    const nomes2 = isolamentos2.map(iso => iso.nomeIsolamento).sort();
+    const nomes1 = isolamentos1
+      .map(iso => normalizarIsolamento(iso.nomeIsolamento))
+      .sort();
+    const nomes2 = isolamentos2
+      .map(iso => normalizarIsolamento(iso.nomeIsolamento))
+      .sort();
     
-    return JSON.stringify(nomes1) === JSON.stringify(nomes2);
+    return nomes1.join(',') === nomes2.join(',');
   };
 
   const temIsolamentoTimo = (isolamentos: Isolamento[]): boolean => {
+    if (!isolamentos) return false;
     return isolamentos.some(iso => 
-      iso.nomeIsolamento.toLowerCase().includes('timo')
+      normalizarIsolamento(iso.nomeIsolamento).includes('timo')
     );
   };
 
@@ -122,23 +131,45 @@ const AlertasIsolamento = () => {
   };
 
   const encontrarAgrupamento = (paciente: PacienteAlerta, todosPacientes: PacienteFirestore[]): PacienteAlerta | null => {
-    // Ignorar pacientes sem sexo definido ou com isolamento Timo
-    if (!paciente.sexoPaciente || temIsolamentoTimo(paciente.isolamentosAtivos)) {
+    // Validações básicas
+    if (!paciente.sexoPaciente || 
+        !paciente.isolamentosAtivos || 
+        paciente.isolamentosAtivos.length === 0 ||
+        temIsolamentoTimo(paciente.isolamentosAtivos)) {
       return null;
     }
 
+    console.log(`🔍 Buscando agrupamento para ${paciente.nomePaciente}:`, {
+      sexo: paciente.sexoPaciente,
+      isolamentos: paciente.isolamentosAtivos.map(i => i.nomeIsolamento),
+      quarto: extrairQuarto(paciente.leitoAtualPaciente)
+    });
+
     for (const outroPaciente of todosPacientes) {
-      // Verificações básicas
-      if (outroPaciente.id === paciente.id || 
-          !outroPaciente.sexoPaciente ||
-          outroPaciente.sexoPaciente !== paciente.sexoPaciente ||
-          outroPaciente.setorAtualPaciente !== paciente.setorAtualPaciente ||
-          extrairQuarto(outroPaciente.leitoAtualPaciente) === extrairQuarto(paciente.leitoAtualPaciente)) {
+      // Pular o próprio paciente
+      if (outroPaciente.id === paciente.id) continue;
+
+      // Validações básicas do outro paciente
+      if (!outroPaciente.sexoPaciente ||
+          !outroPaciente.isolamentosAtivos ||
+          outroPaciente.isolamentosAtivos.length === 0) {
         continue;
       }
 
-      // Verificar se tem isolamentos ativos
-      if (!outroPaciente.isolamentosAtivos || outroPaciente.isolamentosAtivos.length === 0) {
+      // Verificar sexo
+      if (outroPaciente.sexoPaciente !== paciente.sexoPaciente) {
+        continue;
+      }
+
+      // Verificar se está no mesmo setor
+      if (outroPaciente.setorAtualPaciente !== paciente.setorAtualPaciente) {
+        continue;
+      }
+
+      // Verificar se não estão no mesmo quarto
+      const quartoOutro = extrairQuarto(outroPaciente.leitoAtualPaciente);
+      const quartoPaciente = extrairQuarto(paciente.leitoAtualPaciente);
+      if (quartoOutro === quartoPaciente) {
         continue;
       }
 
@@ -149,6 +180,8 @@ const AlertasIsolamento = () => {
 
       // Verificar se os isolamentos são iguais
       if (isolamentosSaoIguais(paciente.isolamentosAtivos, outroPaciente.isolamentosAtivos)) {
+        console.log(`✅ Agrupamento encontrado: ${paciente.nomePaciente} + ${outroPaciente.nomePaciente}`);
+        
         return {
           id: outroPaciente.id,
           nomePaciente: outroPaciente.nomePaciente,
@@ -164,6 +197,7 @@ const AlertasIsolamento = () => {
   };
 
   const gerarAlertas = async (pacientes: PacienteFirestore[]) => {
+    console.log(`📊 Gerando alertas para ${pacientes.length} pacientes`);
     const novosAlertas: AlertaRegulacao[] = [];
     const setoresCache: {[key: string]: string} = {};
 
@@ -237,9 +271,13 @@ const AlertasIsolamento = () => {
         };
 
         if (pacienteCompativel) {
+          const isolamentosTexto = paciente.isolamentosAtivos
+            .map(iso => iso.nomeIsolamento)
+            .join(', ');
+          
           alerta.sugestaoAgrupamento = {
             pacienteCompativel,
-            motivoCompatibilidade: `Mesmo sexo (${paciente.sexoPaciente}) e isolamentos idênticos`
+            motivoCompatibilidade: `Mesmo sexo (${paciente.sexoPaciente}) e isolamentos idênticos: ${isolamentosTexto}`
           };
         }
 
@@ -247,6 +285,7 @@ const AlertasIsolamento = () => {
       }
     }
 
+    console.log(`🚨 ${novosAlertas.length} alertas gerados`);
     setAlertas(novosAlertas);
   };
 
@@ -258,6 +297,7 @@ const AlertasIsolamento = () => {
           .map(doc => ({ id: doc.id, ...doc.data() } as PacienteFirestore))
           .filter(paciente => paciente.statusInternacao === 'internado');
         
+        console.log(`👥 ${pacientesInternados.length} pacientes internados encontrados`);
         gerarAlertas(pacientesInternados);
         setLoading(false);
       },
@@ -365,15 +405,18 @@ const AlertasIsolamento = () => {
                           <Users className="h-4 w-4 text-blue-600 mt-0.5" />
                           <div className="flex-1">
                             <div className="text-sm font-medium text-blue-800 mb-1">
-                              Possível Agrupamento Detectado
+                              💡 Possível Agrupamento Detectado
                             </div>
                             <div className="text-xs text-blue-700 mb-2">
                               Este paciente pode ser agrupado com{' '}
                               <strong>{alerta.sugestaoAgrupamento.pacienteCompativel.nomePaciente}</strong>{' '}
-                              no mesmo quarto.
+                              (Quarto {extrairQuarto(alerta.sugestaoAgrupamento.pacienteCompativel.leitoAtualPaciente)}).
                             </div>
                             <div className="text-xs text-blue-600 mb-2">
                               {alerta.sugestaoAgrupamento.motivoCompatibilidade}
+                            </div>
+                            <div className="text-xs text-blue-700 mb-2 font-medium">
+                              🛏️ Sugestão: remanejar para o mesmo quarto
                             </div>
                             <Button
                               variant="outline"

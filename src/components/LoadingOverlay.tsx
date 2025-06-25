@@ -10,6 +10,16 @@ const LoadingOverlay = ({ isLoading }: LoadingOverlayProps) => {
   const [fraseAtual, setFraseAtual] = useState('');
 
   const frases = [
+    "Localizando o leito ideal...",
+    "Evite aglomerações, mas compartilhe o leito (com critério)...",
+    "Organizando o caos hospitalar com carinho 🏥",
+    "Preparando sua tela para a mágica da regulação...",
+    "Carregando pacientes, sem perder a humanização...",
+    "Ocupando leito sem ocupar espaço em vão...",
+    "Conectando enfermeiros, médicos e a TI num só amor...",
+    "Carregando... Não é fácil regular, mas é possível!",
+    "Aliviando o PS... um leito de cada vez!",
+    "Só mais um momentinho... quase lá!",
     "Otimizando o uso de cada leito...",
     "A regulação nunca dorme.",
     "Conectando pacientes ao cuidado certo.",
@@ -24,16 +34,24 @@ const LoadingOverlay = ({ isLoading }: LoadingOverlayProps) => {
 
   useEffect(() => {
     if (isLoading) {
-      // Selecionar frase aleatória
+      // Selecionar frase aleatória inicial
       const fraseAleatoria = frases[Math.floor(Math.random() * frases.length)];
       setFraseAtual(fraseAleatoria);
+
+      // Trocar frases a cada 3 segundos
+      const interval = setInterval(() => {
+        const novaFrase = frases[Math.floor(Math.random() * frases.length)];
+        setFraseAtual(novaFrase);
+      }, 3000);
+
+      return () => clearInterval(interval);
     }
   }, [isLoading]);
 
   if (!isLoading) return null;
 
   return (
-    <div className="fixed inset-0 bg-white/90 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex items-center justify-center">
       <div className="text-center space-y-6 max-w-md px-6">
         <div className="relative">
           <LoaderCircle className="h-12 w-12 text-blue-600 animate-spin mx-auto" />
@@ -42,7 +60,7 @@ const LoadingOverlay = ({ isLoading }: LoadingOverlayProps) => {
         
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-gray-800">RegulaFácil</h3>
-          <p className="text-sm text-gray-600 animate-pulse">
+          <p className="text-sm text-gray-600 animate-pulse min-h-[2.5rem] flex items-center justify-center">
             {fraseAtual}
           </p>
         </div>
