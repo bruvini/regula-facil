@@ -7,16 +7,18 @@ interface ModalConfirmacaoAltaProps {
   aberto: boolean;
   onFechar: () => void;
   nomePaciente: string;
+  leitoCodigo: string;
   onConfirmar: () => void;
   loading?: boolean;
 }
 
 const ModalConfirmacaoAlta = ({ 
-  aberto, 
-  onFechar, 
-  nomePaciente, 
+  aberto,
+  onFechar,
+  nomePaciente,
+  leitoCodigo,
   onConfirmar,
-  loading = false 
+  loading = false
 }: ModalConfirmacaoAltaProps) => {
   return (
     <Dialog open={aberto} onOpenChange={onFechar}>
@@ -27,9 +29,10 @@ const ModalConfirmacaoAlta = ({
             Confirmação de Alta
           </DialogTitle>
           <DialogDescription className="text-left">
-            Tem certeza que deseja dar alta ao paciente:
+            Tem certeza que deseja dar alta para
             <br />
-            <strong className="text-foreground">{nomePaciente}</strong>?
+            <strong className="text-foreground">{nomePaciente}</strong> no leito{' '}
+            <strong className="text-foreground">{leitoCodigo}</strong>?
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex gap-2">

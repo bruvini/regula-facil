@@ -138,7 +138,12 @@ export const useMapaLeitos = () => {
                       statusInternacao: pacienteDocData.statusInternacao || '',
                       isolamentosAtivos: pacienteDocData.isolamentosAtivos || [],
                       especialidade: pacienteDocData.especialidade || '',
-                      statusRegulacao: pacienteDocData.statusRegulacao || ''
+                      statusRegulacao: pacienteDocData.statusRegulacao || '',
+                      aguardaUTI: pacienteDocData.aguardaUTI || false,
+                      dataPedidoUTI: pacienteDocData.dataPedidoUTI || null,
+                      remanejarPaciente: pacienteDocData.remanejarPaciente || false,
+                      motivoRemanejamento: pacienteDocData.motivoRemanejamento || '',
+                      dataPedidoRemanejamento: pacienteDocData.dataPedidoRemanejamento || null
                     } as Paciente;
                   }
                 } catch (err) {

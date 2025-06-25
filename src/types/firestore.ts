@@ -56,6 +56,11 @@ export interface Paciente {
   isolamentosAtivos?: string[];
   especialidade?: string;
   statusRegulacao?: string;
+  aguardaUTI?: boolean;
+  dataPedidoUTI?: any;
+  remanejarPaciente?: boolean;
+  motivoRemanejamento?: string;
+  dataPedidoRemanejamento?: any;
 }
 
 export interface LeitoWithData extends Leito {
