@@ -1,12 +1,11 @@
-
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { AlertTriangle, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Isolamento {
@@ -31,32 +30,34 @@ interface PacienteAlerta {
   isolamentosAtivos: Isolamento[];
 }
 
-interface AlertaRegulacao {
+interface AlertaCCIH {
   id: string;
   paciente: PacienteAlerta;
   dataAlerta: Date;
   quarto: string;
   setorNome: string;
-  tempoEspera: string;
 }
 
-const AlertasIsolamento = () => {
-  const [alertas, setAlertas] = useState<AlertaRegulacao[]>([]);
+const AlertasCCIH = () => {
+  const [alertas, setAlertas] = useState<AlertaCCIH[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false); // Changed to start collapsed
   const { toast } = useToast();
 
+  // Função para extrair número do quarto do leito
   const extrairQuarto = (leito: string): string => {
     if (!leito) return '';
     const partes = leito.split(' ');
     return partes[0] || '';
   };
 
+  // Função para verificar se é setor de UTI/UTQ
   const isSetorUTI = (setorNome: string): boolean => {
     const setorLower = setorNome.toLowerCase();
     return setorLower.includes('uti') || setorLower.includes('utq');
   };
 
+  // Função para comparar arrays de isolamentos
   const isolamentosSaoIguais = (isolamentos1: Isolamento[], isolamentos2: Isolamento[]): boolean => {
     if (isolamentos1.length !== isolamentos2.length) return false;
     
@@ -66,39 +67,16 @@ const AlertasIsolamento = () => {
     return JSON.stringify(nomes1) === JSON.stringify(nomes2);
   };
 
-  const calcularTempoEspera = (isolamentos: Isolamento[]): string => {
-    if (!isolamentos || isolamentos.length === 0) return 'N/A';
-    
-    // Encontrar o isolamento mais antigo
-    const isolamentoMaisAntigo = isolamentos.reduce((mais, atual) => {
-      const dataAtual = atual.dataInclusao?.toDate ? atual.dataInclusao.toDate() : new Date(atual.dataInclusao);
-      const dataMais = mais.dataInclusao?.toDate ? mais.dataInclusao.toDate() : new Date(mais.dataInclusao);
-      return dataAtual < dataMais ? atual : mais;
-    });
-
-    const agora = new Date();
-    const dataInicio = isolamentoMaisAntigo.dataInclusao?.toDate ? 
-      isolamentoMaisAntigo.dataInclusao.toDate() : 
-      new Date(isolamentoMaisAntigo.dataInclusao);
-    
-    const diffMs = agora.getTime() - dataInicio.getTime();
-    const diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDias = Math.floor(diffHoras / 24);
-    const horasRestantes = diffHoras % 24;
-    
-    if (diffDias > 0) {
-      return `${diffDias}d ${horasRestantes}h`;
-    }
-    return `${diffHoras}h`;
-  };
-
+  // Função para gerar alertas
   const gerarAlertas = async (pacientes: PacienteFirestore[]) => {
-    const novosAlertas: AlertaRegulacao[] = [];
+    const novosAlertas: AlertaCCIH[] = [];
     const setoresCache: {[key: string]: string} = {};
 
     for (const paciente of pacientes) {
+      // Verificar se paciente tem isolamentos ativos
       if (!paciente.isolamentosAtivos || paciente.isolamentosAtivos.length === 0) continue;
       
+      // Buscar nome do setor se não estiver em cache
       let setorNome = '';
       const setorId = paciente.setorAtualPaciente;
       
@@ -118,11 +96,13 @@ const AlertasIsolamento = () => {
         }
       }
 
+      // Pular se for UTI/UTQ
       if (isSetorUTI(setorNome)) continue;
 
       const quartoAtual = extrairQuarto(paciente.leitoAtualPaciente);
       if (!quartoAtual) continue;
 
+      // Buscar outros pacientes no mesmo setor e quarto
       const pacientesNoMesmoQuarto = pacientes.filter(p => 
         p.id !== paciente.id &&
         p.setorAtualPaciente === paciente.setorAtualPaciente &&
@@ -131,11 +111,13 @@ const AlertasIsolamento = () => {
 
       if (pacientesNoMesmoQuarto.length === 0) continue;
 
+      // Verificar se há incompatibilidade de isolamentos
       let temIncompatibilidade = false;
 
       for (const outroPaciente of pacientesNoMesmoQuarto) {
         const outrosIsolamentos = outroPaciente.isolamentosAtivos || [];
         
+        // Se outro paciente não tem isolamentos ou tem isolamentos diferentes
         if (outrosIsolamentos.length === 0 || 
             !isolamentosSaoIguais(paciente.isolamentosAtivos, outrosIsolamentos)) {
           temIncompatibilidade = true;
@@ -155,8 +137,7 @@ const AlertasIsolamento = () => {
           },
           dataAlerta: new Date(),
           quarto: quartoAtual,
-          setorNome,
-          tempoEspera: calcularTempoEspera(paciente.isolamentosAtivos)
+          setorNome
         });
       }
     }
@@ -164,6 +145,7 @@ const AlertasIsolamento = () => {
     setAlertas(novosAlertas);
   };
 
+  // Monitorar pacientes internados
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, 'pacientesRegulaFacil'),
@@ -184,32 +166,56 @@ const AlertasIsolamento = () => {
     return () => unsubscribe();
   }, []);
 
-  const handleRemanejar = (alertaId: string) => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "O remanejamento será implementado em breve.",
-      duration: 3000
+  // Função para copiar texto do alerta
+  const copiarTextoAlerta = (alerta: AlertaCCIH) => {
+    const isolamentosTexto = alerta.paciente.isolamentosAtivos
+      .map(iso => `- *${iso.nomeIsolamento}*`)
+      .join('\n');
+
+    const textoAlerta = `⚠️ *ALERTA DE REMANEJAMENTO*
+
+Paciente ${alerta.paciente.nomePaciente}, localizado em ${alerta.setorNome} - ${alerta.paciente.leitoAtualPaciente}, está com os seguintes isolamentos:
+${isolamentosTexto}
+
+Providenciar o remanejamento do paciente para outro setor para evitar surtos e contaminação cruzada
+
+Data do alerta: ${new Date().toLocaleString('pt-BR')}`;
+
+    navigator.clipboard.writeText(textoAlerta).then(() => {
+      toast({
+        title: "Texto copiado",
+        description: "O texto do alerta foi copiado para a área de transferência.",
+        duration: 3000
+      });
+    }).catch(() => {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar o texto do alerta.",
+        variant: "destructive",
+        duration: 3000
+      });
     });
   };
 
   if (loading) {
-    return null;
+    return null; // Não mostrar nada enquanto carrega
   }
 
+  // Não renderizar o bloco se não houver alertas
   if (alertas.length === 0) {
     return null;
   }
 
   return (
-    <Card className="border-orange-200 bg-orange-50/50">
+    <Card className="border-red-200 bg-red-50/50">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-orange-100/50 transition-colors">
-            <CardTitle className="flex items-center justify-between text-orange-800">
+          <CardHeader className="cursor-pointer hover:bg-red-100/50 transition-colors">
+            <CardTitle className="flex items-center justify-between text-red-800">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5" />
-                Pacientes com Alertas de Isolamento (CCIH/NHE)
-                <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                Alertas CCIH/NHE
+                <Badge variant="destructive" className="bg-red-100 text-red-800">
                   {alertas.length}
                 </Badge>
               </div>
@@ -225,37 +231,37 @@ const AlertasIsolamento = () => {
           <CardContent className="pt-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {alertas.map((alerta) => (
-                <div key={alerta.id} className="p-4 bg-white rounded-lg border border-orange-200">
+                <div key={alerta.id} className="p-4 bg-white rounded-lg border border-red-200">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <div className="font-medium text-base mb-1 text-orange-900">
+                      <div className="font-medium text-base mb-1 text-red-900">
                         {alerta.paciente.nomePaciente}
                       </div>
-                      <div className="text-sm text-orange-700 mb-2">
-                        {alerta.setorNome} - Quarto {alerta.quarto}, Leito {alerta.paciente.leitoAtualPaciente}
+                      <div className="text-sm text-red-700 mb-2">
+                        {alerta.setorNome} - Leito {alerta.paciente.leitoAtualPaciente}
                       </div>
-                      <div className="flex items-center gap-1 text-sm text-orange-600 mb-2">
-                        <Clock className="h-4 w-4" />
-                        Aguardando remanejamento há {alerta.tempoEspera}
+                      <div className="text-sm text-red-600">
+                        Quarto {alerta.quarto} - Risco de contaminação cruzada
                       </div>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleRemanejar(alerta.id)}
-                      className="text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300 shrink-0"
+                      onClick={() => copiarTextoAlerta(alerta)}
+                      className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 shrink-0"
                     >
-                      Remanejar
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copiar Alerta
                     </Button>
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="text-sm font-medium text-orange-800">
+                    <div className="text-sm font-medium text-red-800">
                       Isolamentos Ativos:
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {alerta.paciente.isolamentosAtivos.map((isolamento, index) => (
-                        <Badge key={index} variant="outline" className="border-orange-300 text-orange-700">
+                        <Badge key={index} variant="outline" className="border-red-300 text-red-700">
                           {isolamento.nomeIsolamento}
                         </Badge>
                       ))}
@@ -271,4 +277,4 @@ const AlertasIsolamento = () => {
   );
 };
 
-export default AlertasIsolamento;
+export default AlertasCCIH;

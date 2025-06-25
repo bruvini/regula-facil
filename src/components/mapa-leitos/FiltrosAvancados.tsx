@@ -1,10 +1,19 @@
 
+import { useState, useEffect } from 'react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+import { X } from 'lucide-react';
+
+interface IsolamentoRegulaFacil {
+  id: string;
+  nomeIsolamento: string;
+}
 
 interface IsolamentoTipo {
   id: string;
@@ -35,6 +44,27 @@ const statusOptions = [
 ];
 
 const FiltrosAvancados = ({ aberto, isolamentoTipos, filtros, onFiltroChange }: FiltrosAvancadosProps) => {
+  const [isolamentosRegulaFacil, setIsolamentosRegulaFacil] = useState<IsolamentoRegulaFacil[]>([]);
+
+  // Carregar isolamentos do RegulaFacil
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'isolamentosRegulaFacil'),
+      (snapshot) => {
+        const isolamentosData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          nomeIsolamento: doc.data().nomeIsolamento || ''
+        }));
+        setIsolamentosRegulaFacil(isolamentosData);
+      },
+      (error) => {
+        console.error('Erro ao carregar isolamentos:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
   const handleStatusToggle = (status: string) => {
     const novosStatus = filtros.statusSelecionados.includes(status)
       ? filtros.statusSelecionados.filter(s => s !== status)
@@ -43,12 +73,18 @@ const FiltrosAvancados = ({ aberto, isolamentoTipos, filtros, onFiltroChange }: 
     onFiltroChange({ ...filtros, statusSelecionados: novosStatus });
   };
 
-  const handleIsolamentoToggle = (isolamento: string) => {
+  const handleIsolamentoToggle = (nomeIsolamento: string) => {
     const isolamentosArray = Array.isArray(filtros.isolamento) ? filtros.isolamento : [];
-    const novosIsolamentos = isolamentosArray.includes(isolamento)
-      ? isolamentosArray.filter(i => i !== isolamento)
-      : [...isolamentosArray, isolamento];
+    const novosIsolamentos = isolamentosArray.includes(nomeIsolamento)
+      ? isolamentosArray.filter(i => i !== nomeIsolamento)
+      : [...isolamentosArray, nomeIsolamento];
     
+    onFiltroChange({ ...filtros, isolamento: novosIsolamentos });
+  };
+
+  const removeIsolamento = (nomeIsolamento: string) => {
+    const isolamentosArray = Array.isArray(filtros.isolamento) ? filtros.isolamento : [];
+    const novosIsolamentos = isolamentosArray.filter(i => i !== nomeIsolamento);
     onFiltroChange({ ...filtros, isolamento: novosIsolamentos });
   };
 
@@ -97,20 +133,35 @@ const FiltrosAvancados = ({ aberto, isolamentoTipos, filtros, onFiltroChange }: 
 
         <div className="space-y-2">
           <Label>Isolamentos</Label>
-          <div className="flex flex-wrap gap-2">
-            {isolamentoTipos.map((tipo) => (
-              <div key={tipo.id} className="flex items-center space-x-2">
+          <div className="flex flex-wrap gap-2 mb-2">
+            {isolamentosRegulaFacil.map((isolamento) => (
+              <div key={isolamento.id} className="flex items-center space-x-2">
                 <Checkbox
-                  id={`isolamento-${tipo.id}`}
-                  checked={Array.isArray(filtros.isolamento) && filtros.isolamento.includes(tipo.tipo)}
-                  onCheckedChange={() => handleIsolamentoToggle(tipo.tipo)}
+                  id={`isolamento-${isolamento.id}`}
+                  checked={Array.isArray(filtros.isolamento) && filtros.isolamento.includes(isolamento.nomeIsolamento)}
+                  onCheckedChange={() => handleIsolamentoToggle(isolamento.nomeIsolamento)}
                 />
-                <Label htmlFor={`isolamento-${tipo.id}`} className="text-sm font-normal">
-                  {tipo.tipo}
+                <Label htmlFor={`isolamento-${isolamento.id}`} className="text-sm font-normal">
+                  {isolamento.nomeIsolamento}
                 </Label>
               </div>
             ))}
           </div>
+          
+          {/* Badges dos isolamentos selecionados */}
+          {Array.isArray(filtros.isolamento) && filtros.isolamento.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {filtros.isolamento.map((nomeIsolamento, index) => (
+                <Badge key={index} variant="default" className="flex items-center gap-1">
+                  {nomeIsolamento}
+                  <X 
+                    className="h-3 w-3 cursor-pointer hover:bg-primary/20 rounded-full p-0.5" 
+                    onClick={() => removeIsolamento(nomeIsolamento)}
+                  />
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">

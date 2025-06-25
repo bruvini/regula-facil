@@ -1,4 +1,3 @@
-
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,11 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, Shield, Users, AlertTriangle, Eye, Settings, Plus, Activity } from "lucide-react";
 import { useState } from "react";
+import ModalGerenciarIsolamentos from "@/components/ccih-nhe/ModalGerenciarIsolamentos";
+import ModalIncluirIsolamento from "@/components/ccih-nhe/ModalIncluirIsolamento";
+import MultiSelectIsolamentos from "@/components/ccih-nhe/MultiSelectIsolamentos";
+import PacientesVigilancia from "@/components/ccih-nhe/PacientesVigilancia";
+import AlertasCCIH from "@/components/ccih-nhe/AlertasCCIH";
 
 const CCIHNHE = () => {
   const [busca, setBusca] = useState("");
   const [sexoSelecionado, setSexoSelecionado] = useState("todos");
   const [isolamentosSelecionados, setIsolamentosSelecionados] = useState<string[]>([]);
+  const [modalIsolamentosAberto, setModalIsolamentosAberto] = useState(false);
+  const [modalIncluirIsolamentoAberto, setModalIncluirIsolamentoAberto] = useState(false);
 
   // Mock data - will be replaced with real data later
   const isolamentosDisponiveis = [
@@ -92,7 +98,7 @@ const CCIHNHE = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-end">
               {/* Busca */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Buscar</label>
@@ -122,74 +128,58 @@ const CCIHNHE = () => {
                 </Select>
               </div>
 
+              {/* Tipos de Isolamento */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tipos de Isolamento</label>
+                <MultiSelectIsolamentos
+                  selectedIsolamentos={isolamentosSelecionados}
+                  onSelectionChange={setIsolamentosSelecionados}
+                />
+              </div>
+
               {/* Botões de Ação */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Ações</label>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setModalIsolamentosAberto(true)}
+                  >
                     <Settings className="h-4 w-4 mr-2" />
                     Gerenciar Isolamentos
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setModalIncluirIsolamentoAberto(true)}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Incluir em Isolamento
                   </Button>
                 </div>
               </div>
             </div>
-
-            {/* Isolamentos Multi-select */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tipos de Isolamento</label>
-              <div className="flex flex-wrap gap-2">
-                {isolamentosDisponiveis.map((isolamento) => (
-                  <Badge
-                    key={isolamento.id}
-                    variant={isolamentosSelecionados.includes(isolamento.id) ? "default" : "outline"}
-                    className="cursor-pointer transition-colors hover:bg-primary/80"
-                    onClick={() => toggleIsolamento(isolamento.id)}
-                  >
-                    {isolamento.tipo}
-                  </Badge>
-                ))}
-              </div>
-            </div>
           </CardContent>
         </Card>
 
-        {/* Alertas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Alertas CCIH/NHE
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-              <p className="text-lg mb-2">Sistema de Alertas em Desenvolvimento</p>
-              <p>Os alertas automáticos para surtos e eventos de vigilância serão implementados em breve.</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Alertas CCIH/NHE - Novo componente */}
+        <AlertasCCIH />
 
-        {/* Pacientes em Vigilância */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="h-5 w-5" />
-              Pacientes em Vigilância
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              <Eye className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-              <p className="text-lg mb-2">Lista de Vigilância em Desenvolvimento</p>
-              <p>A listagem de pacientes em vigilância epidemiológica será implementada em breve.</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Pacientes em Vigilância - Novo componente */}
+        <PacientesVigilancia />
+
+        {/* Modal de Gerenciar Isolamentos */}
+        <ModalGerenciarIsolamentos 
+          open={modalIsolamentosAberto}
+          onOpenChange={setModalIsolamentosAberto}
+        />
+
+        {/* Modal de Incluir em Isolamento */}
+        <ModalIncluirIsolamento 
+          open={modalIncluirIsolamentoAberto}
+          onOpenChange={setModalIncluirIsolamentoAberto}
+        />
       </div>
     </Layout>
   );
