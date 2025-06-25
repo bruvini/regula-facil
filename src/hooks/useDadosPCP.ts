@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ConfiguracaoPCP, DadosPCP } from '@/types/pcp';
 import { LeitoWithData } from '@/types/firestore';
@@ -21,13 +21,6 @@ export const useDadosPCP = (configuracoesPCP: ConfiguracaoPCP[], leitos: LeitoWi
     try {
       console.log('Calculando dados PCP...', { configuracoesPCP: configuracoesPCP.length, leitos: leitos.length });
 
-      // Buscar todos os setores para criar um mapa de referência
-      const setoresSnapshot = await getDocs(collection(db, 'setoresRegulaFacil'));
-      const setoresMap = new Map();
-      setoresSnapshot.docs.forEach(doc => {
-        setoresMap.set(doc.id, doc.data());
-      });
-
       // Buscar pacientes internados
       const pacientesQuery = query(
         collection(db, 'pacientesRegulaFacil'),
@@ -44,19 +37,13 @@ export const useDadosPCP = (configuracoesPCP: ConfiguracaoPCP[], leitos: LeitoWi
 
       for (const pacienteDoc of pacientesSnapshot.docs) {
         const pacienteData = pacienteDoc.data();
-        
-        if (pacienteData.setorAtualPaciente?.id) {
-          const setorData = setoresMap.get(pacienteData.setorAtualPaciente.id);
-          
-          if (setorData?.sigla) {
-            const siglaSetor = setorData.sigla;
-            console.log('Paciente no setor:', siglaSetor);
-            
-            if (siglaSetor === 'PS DECISÃO CLÍNICA') pacientesDCL++;
-            else if (siglaSetor === 'PS DECISÃO CIRÚRGICA') pacientesDCX++;
-            else if (siglaSetor === 'SALA LARANJA') pacientesSalaLaranja++;
-            else if (siglaSetor === 'SALA DE EMERGENCIA') pacientesSalaEmergencia++;
-          }
+
+        const setor = pacienteData.setorAtualPaciente as string | undefined;
+        if (setor) {
+          if (setor === 'PS DECISÃO CLINICA') pacientesDCL++;
+          else if (setor === 'PS DECISÃO CIRURGICA') pacientesDCX++;
+          else if (setor === 'SALA LARANJA') pacientesSalaLaranja++;
+          else if (setor === 'SALA DE EMERGENCIA') pacientesSalaEmergencia++;
         }
       }
 
