@@ -1,4 +1,3 @@
-
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,12 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Shield, Users, AlertTriangle, Eye, Settings, Plus, Activity } from "lucide-react";
 import { useState } from "react";
 import ModalGerenciarIsolamentos from "@/components/ccih-nhe/ModalGerenciarIsolamentos";
+import ModalIncluirIsolamento from "@/components/ccih-nhe/ModalIncluirIsolamento";
 
 const CCIHNHE = () => {
   const [busca, setBusca] = useState("");
   const [sexoSelecionado, setSexoSelecionado] = useState("todos");
   const [isolamentosSelecionados, setIsolamentosSelecionados] = useState<string[]>([]);
   const [modalIsolamentosAberto, setModalIsolamentosAberto] = useState(false);
+  const [modalIncluirIsolamentoAberto, setModalIncluirIsolamentoAberto] = useState(false);
 
   // Mock data - will be replaced with real data later
   const isolamentosDisponiveis = [
@@ -136,7 +137,11 @@ const CCIHNHE = () => {
                     <Settings className="h-4 w-4 mr-2" />
                     Gerenciar Isolamentos
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setModalIncluirIsolamentoAberto(true)}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Incluir em Isolamento
                   </Button>
@@ -201,6 +206,12 @@ const CCIHNHE = () => {
         <ModalGerenciarIsolamentos 
           open={modalIsolamentosAberto}
           onOpenChange={setModalIsolamentosAberto}
+        />
+
+        {/* Modal de Incluir em Isolamento */}
+        <ModalIncluirIsolamento 
+          open={modalIncluirIsolamentoAberto}
+          onOpenChange={setModalIncluirIsolamentoAberto}
         />
       </div>
     </Layout>
