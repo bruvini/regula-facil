@@ -10,6 +10,7 @@ import ModalGerenciarIsolamentos from "@/components/ccih-nhe/ModalGerenciarIsola
 import ModalIncluirIsolamento from "@/components/ccih-nhe/ModalIncluirIsolamento";
 import MultiSelectIsolamentos from "@/components/ccih-nhe/MultiSelectIsolamentos";
 import PacientesVigilancia from "@/components/ccih-nhe/PacientesVigilancia";
+import AlertasCCIH from "@/components/ccih-nhe/AlertasCCIH";
 
 const CCIHNHE = () => {
   const [busca, setBusca] = useState("");
@@ -162,22 +163,8 @@ const CCIHNHE = () => {
           </CardContent>
         </Card>
 
-        {/* Alertas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Alertas CCIH/NHE
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-              <p className="text-lg mb-2">Sistema de Alertas em Desenvolvimento</p>
-              <p>Os alertas automáticos para surtos e eventos de vigilância serão implementados em breve.</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Alertas CCIH/NHE - Novo componente */}
+        <AlertasCCIH />
 
         {/* Pacientes em Vigilância - Novo componente */}
         <PacientesVigilancia />
