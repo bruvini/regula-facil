@@ -57,7 +57,6 @@ export const usePacientesUTI = () => {
   useEffect(() => {
     const q = query(
       collection(db, 'pacientesRegulaFacil'),
-      where('statusInternacao', '==', 'internado'),
       where('aguardaUTI', '==', true)
     );
 
@@ -131,7 +130,18 @@ export const usePacientesUTI = () => {
           })
         );
 
-        setPacientesUTI(pacientesData.filter(p => p.setorAtual && p.leitoAtual));
+        const pacientesFiltrados = pacientesData.filter(
+          (p) => p.setorAtual && p.leitoAtual
+        );
+        console.log(
+          'PacientesUTI - Pacientes encontrados:',
+          pacientesFiltrados.length
+        );
+        console.log('PacientesUTI - Estado atual:', pacientesFiltrados);
+        if (pacientesFiltrados.length === 0) {
+          console.log('PacientesUTI - Query retornou:', snapshot.size, 'docs');
+        }
+        setPacientesUTI(pacientesFiltrados);
         setLoading(false);
       } catch (error) {
         console.error('Erro ao carregar pacientes UTI:', error);
