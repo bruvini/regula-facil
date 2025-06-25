@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { AlertTriangle, RefreshCw, Trash2 } from 'lucide-react';
-import { collection, getDocs, deleteDoc, doc, writeBatch, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { toast as toastSonner } from '@/components/ui/sonner';
 
 const BlocoResetBanco = () => {
   const [modalAberto, setModalAberto] = useState(false);
@@ -41,43 +42,33 @@ const BlocoResetBanco = () => {
 
     try {
       const snapshot = await getDocs(collection(db, colecaoSelecionada));
-      const total = snapshot.size;
+      const docs = snapshot.docs;
+      const total = docs.length;
       let processados = 0;
 
-      // Processar em lotes de 10 documentos
-      const batch = writeBatch(db);
-      const promises: Promise<void>[] = [];
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+        const batchDocs = docs.slice(i, i + BATCH_SIZE);
+        const batch = writeBatch(db);
 
-      snapshot.docs.forEach((documento, index) => {
-        batch.delete(documento.ref);
-        
-        // Executar batch a cada 10 documentos ou no último documento
-        if ((index + 1) % 10 === 0 || index === snapshot.docs.length - 1) {
-          promises.push(
-            batch.commit().then(() => {
-              processados += Math.min(10, snapshot.docs.length - processados);
-              setProgresso((processados / total) * 100);
-            })
-          );
-        }
-      });
+        batchDocs.forEach((documento) => batch.delete(documento.ref));
 
-      await Promise.all(promises);
+        await batch.commit();
+        processados += batchDocs.length;
+        setProgresso((processados / total) * 100);
+      }
 
       // Registrar log
       await addDoc(collection(db, 'logsSistemaRegulaFacil'), {
-        acao: 'Resetar base de dados',
+        acao: 'Resetar banco de dados',
         alvo: colecaoSelecionada,
-        descricao: `Coleção resetada com sucesso. Total de documentos excluídos: ${total}`,
+        descricao: `${total} documentos excluídos da coleção ${colecaoSelecionada}`,
         pagina: 'Configurações',
         timestamp: serverTimestamp(),
         usuario: 'Sistema'
       });
 
-      toast({
-        title: "Reset concluído",
-        description: `${total} documentos foram excluídos da coleção ${colecaoSelecionada}.`,
-      });
+      toastSonner.success(`Coleção ${colecaoSelecionada} resetada com sucesso! ${total} documentos excluídos.`);
 
     } catch (error) {
       console.error('Erro ao resetar coleção:', error);
