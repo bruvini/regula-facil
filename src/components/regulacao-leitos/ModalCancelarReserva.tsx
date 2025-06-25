@@ -4,8 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { doc, updateDoc, deleteField, serverTimestamp, collection, addDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, deleteField, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { registrarLog } from '@/lib/logger';
 import { AlertTriangle } from 'lucide-react';
 
 interface ModalCancelarReservaProps {
@@ -28,19 +29,6 @@ const ModalCancelarReserva = ({ aberto, onFechar, paciente, onSucesso }: ModalCa
     onFechar();
   };
 
-  const registrarLog = async (mensagem: string) => {
-    try {
-      await addDoc(collection(db, 'logsRegulaFacil'), {
-        tipo: 'cancelamento_reserva',
-        mensagem,
-        pacienteId: paciente.id,
-        timestamp: serverTimestamp(),
-        usuario: 'Sistema' // TODO: Implementar autenticação
-      });
-    } catch (error) {
-      console.error('Erro ao registrar log:', error);
-    }
-  };
 
   const handleConfirmar = async () => {
     if (!motivo.trim()) return;
@@ -70,7 +58,13 @@ const ModalCancelarReserva = ({ aberto, onFechar, paciente, onSucesso }: ModalCa
 
       // Registrar log
       const mensagemLog = `Reserva de leito ${paciente.leitoDestino} para paciente ${paciente.nomePaciente} cancelada. Motivo: ${motivo}.`;
-      await registrarLog(mensagemLog);
+      await registrarLog({
+        pagina: 'Regulação de Leitos',
+        acao: 'Cancelar reserva de leito',
+        alvo: paciente.leitoDestino || '',
+        descricao: mensagemLog,
+        usuario: 'Sistema'
+      });
 
       onSucesso();
       handleFechar();

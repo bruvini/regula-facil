@@ -8,6 +8,7 @@ import { Calendar, CalendarIcon, Plus, Search, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { collection, addDoc, query, where, getDocs, orderBy, Timestamp, getDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { registrarLog } from "@/lib/logger";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -145,13 +146,12 @@ const MarcacaoCirurgica = () => {
       // Gerar log
       const logTexto = `${format(new Date(), 'dd/MM/yyyy HH:mm')} - Novo pedido de cirurgia para paciente ${nomePaciente}, internação prevista para ${format(dataPrevistaInternacao, 'dd/MM/yyyy')}, cirurgia prevista para ${format(dataPrevistaCirurgia, 'dd/MM/yyyy')}, solicitado pelo Dr(a). ${medicoSolicitante}`;
       
-      await addDoc(collection(db, 'logsSistema'), {
+      await registrarLog({
         pagina: 'Marcação Cirúrgica',
         acao: 'Novo Pedido',
         alvo: nomePaciente,
-        usuario: 'Sistema',
-        timestamp: Timestamp.fromDate(new Date()),
-        descricao: logTexto
+        descricao: logTexto,
+        usuario: 'Sistema'
       });
 
       toast({

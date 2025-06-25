@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { collection, query, orderBy, getDocs, addDoc, Timestamp, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
+import { registrarLog } from "@/lib/logger";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -137,14 +138,13 @@ const BlocoUsuarios = () => {
       await addDoc(collection(db, "usuariosRegulaFacil"), novoUsuario);
 
       // Gerar log da ação
-      await addDoc(collection(db, "logsSistemaRegulaFacil"), {
-        pagina: "Configurações",
-        acao: "Cadastro de Usuário",
-        alvo: data.nomeUsuario.toUpperCase(),
-        usuario: "Sistema",
-        timestamp: Timestamp.now(),
-        descricao: `Novo usuário cadastrado: ${data.nomeUsuario.toUpperCase()} (${data.emailUsuario}) - Matrícula: ${data.matriculaUsuario}, Tipo: ${data.tipoPrevilegioUsuario}`
-      });
+        await registrarLog({
+          pagina: "Configurações",
+          acao: "Cadastro de Usuário",
+          alvo: data.nomeUsuario.toUpperCase(),
+          descricao: `Novo usuário cadastrado: ${data.nomeUsuario.toUpperCase()} (${data.emailUsuario}) - Matrícula: ${data.matriculaUsuario}, Tipo: ${data.tipoPrevilegioUsuario}`,
+          usuario: "Sistema"
+        });
 
       toast({
         title: "Usuário cadastrado",
@@ -185,14 +185,13 @@ const BlocoUsuarios = () => {
       await updateDoc(doc(db, "usuariosRegulaFacil", editingUser.id), usuarioAtualizado);
 
       // Gerar log da ação
-      await addDoc(collection(db, "logsSistemaRegulaFacil"), {
-        pagina: "Configurações",
-        acao: "Edição de Usuário",
-        alvo: data.nomeUsuario.toUpperCase(),
-        usuario: "Sistema",
-        timestamp: Timestamp.now(),
-        descricao: `Usuário editado: ${data.nomeUsuario.toUpperCase()} (${data.emailUsuario})`
-      });
+        await registrarLog({
+          pagina: "Configurações",
+          acao: "Edição de Usuário",
+          alvo: data.nomeUsuario.toUpperCase(),
+          descricao: `Usuário editado: ${data.nomeUsuario.toUpperCase()} (${data.emailUsuario})`,
+          usuario: "Sistema"
+        });
 
       toast({
         title: "Usuário atualizado",
@@ -220,14 +219,13 @@ const BlocoUsuarios = () => {
       await deleteDoc(doc(db, "usuariosRegulaFacil", usuario.id));
 
       // Gerar log da ação
-      await addDoc(collection(db, "logsSistemaRegulaFacil"), {
-        pagina: "Configurações",
-        acao: "Exclusão de Usuário",
-        alvo: usuario.nomeUsuario,
-        usuario: "Sistema",
-        timestamp: Timestamp.now(),
-        descricao: `Usuário excluído: ${usuario.nomeUsuario} (${usuario.emailUsuario})`
-      });
+        await registrarLog({
+          pagina: "Configurações",
+          acao: "Exclusão de Usuário",
+          alvo: usuario.nomeUsuario,
+          descricao: `Usuário excluído: ${usuario.nomeUsuario} (${usuario.emailUsuario})`,
+          usuario: "Sistema"
+        });
 
       toast({
         title: "Usuário excluído",
