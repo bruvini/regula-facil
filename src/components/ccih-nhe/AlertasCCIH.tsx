@@ -13,6 +13,15 @@ interface Isolamento {
   dataInclusao: any;
 }
 
+interface PacienteFirestore {
+  id: string;
+  nomePaciente: string;
+  setorAtualPaciente: string;
+  leitoAtualPaciente: string;
+  statusInternacao: string;
+  isolamentosAtivos: Isolamento[];
+}
+
 interface PacienteAlerta {
   id: string;
   nomePaciente: string;
@@ -58,7 +67,7 @@ const AlertasCCIH = () => {
   };
 
   // Função para gerar alertas
-  const gerarAlertas = async (pacientes: any[]) => {
+  const gerarAlertas = async (pacientes: PacienteFirestore[]) => {
     const novosAlertas: AlertaCCIH[] = [];
     const setoresCache: {[key: string]: string} = {};
 
@@ -141,7 +150,7 @@ const AlertasCCIH = () => {
       collection(db, 'pacientesRegulaFacil'),
       (snapshot) => {
         const pacientesInternados = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .map(doc => ({ id: doc.id, ...doc.data() } as PacienteFirestore))
           .filter(paciente => paciente.statusInternacao === 'internado');
         
         gerarAlertas(pacientesInternados);
