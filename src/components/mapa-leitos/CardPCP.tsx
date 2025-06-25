@@ -23,12 +23,9 @@ const CardPCP = ({ dadosPCP }: CardPCPProps) => {
             <AlertTriangle className="w-6 h-6 text-yellow-500 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm text-muted-foreground">PCP</p>
-              <p className="text-lg font-bold">Nível não configurado</p>
+              <p className="text-lg font-bold">Nível não definido</p>
               <p className="text-xs text-muted-foreground">
                 {dadosPCP.totalPacientes} pacientes (DCL: {dadosPCP.pacientesDCL}, DCX: {dadosPCP.pacientesDCX})
-              </p>
-              <p className="text-xs text-yellow-600 mt-1">
-                Configure os níveis PCP em Configurações
               </p>
             </div>
           </div>

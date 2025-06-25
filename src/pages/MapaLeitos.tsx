@@ -275,7 +275,9 @@ const MapaLeitos = () => {
             <IndicadoresBar leitos={leitosFiltrados} />
           </div>
           <div className="lg:col-span-1">
-            <CardPCP dadosPCP={dadosPCP} />
+            {configuracoesPCP.length > 0 && (
+              <CardPCP dadosPCP={dadosPCP} />
+            )}
           </div>
         </div>
 
