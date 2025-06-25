@@ -15,6 +15,15 @@ interface PacienteUTI {
     id: string;
     codigo: string;
   };
+  leitoDestino?: {
+    id: string;
+    codigo: string;
+  } | null;
+  setorDestino?: {
+    id: string;
+    sigla: string;
+    nomeCompleto: string;
+  } | null;
   dataPedidoUTI: any;
   tempoEspera: string;
 }
@@ -32,24 +41,22 @@ export const usePacientesUTI = () => {
 
   // Calcular tempo de espera
   const calcularTempoEspera = (dataPedido: any) => {
-    if (!dataPedido) return '00:00:00';
-    
+    if (!dataPedido) return '0h 0min';
+
     const agora = new Date();
     const inicio = dataPedido.toDate();
     const diff = agora.getTime() - inicio.getTime();
-    
+
     const horas = Math.floor(diff / (1000 * 60 * 60));
     const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const segundos = Math.floor((diff % (1000 * 60)) / 1000);
-    
-    return `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+
+    return `${horas}h ${minutos}min`;
   };
 
   // Carregar pacientes aguardando UTI
   useEffect(() => {
     const q = query(
       collection(db, 'pacientesRegulaFacil'),
-      where('statusInternacao', '==', 'internado'),
       where('aguardaUTI', '==', true)
     );
 
@@ -86,18 +93,55 @@ export const usePacientesUTI = () => {
               }
             }
 
+            // Buscar leito destino se houver
+            let leitoDestino = null;
+            if (pacienteData.leitoDestino) {
+              const leitoDoc = await getDoc(pacienteData.leitoDestino);
+              if (leitoDoc.exists()) {
+                const leitoData = leitoDoc.data() as any;
+                leitoDestino = { id: leitoDoc.id, codigo: leitoData?.codigo || '' };
+              }
+            }
+
+            // Buscar setor destino se houver
+            let setorDestino = null;
+            if (pacienteData.setorDestino) {
+              const setorDoc = await getDoc(pacienteData.setorDestino);
+              if (setorDoc.exists()) {
+                const setorData = setorDoc.data() as any;
+                setorDestino = {
+                  id: setorDoc.id,
+                  sigla: setorData?.sigla || '',
+                  nomeCompleto: setorData?.nomeCompleto || ''
+                };
+              }
+            }
+
             return {
               id: pacienteDoc.id,
               nome: pacienteData.nomePaciente || '',
               setorAtual,
               leitoAtual,
+              leitoDestino,
+              setorDestino,
               dataPedidoUTI: pacienteData.dataPedidoUTI,
               tempoEspera: calcularTempoEspera(pacienteData.dataPedidoUTI)
             };
           })
         );
 
-        setPacientesUTI(pacientesData.filter(p => p.setorAtual && p.leitoAtual));
+        const pacientesFiltrados = pacientesData.filter(
+          (p) => p.setorAtual && p.leitoAtual
+        );
+        console.log(
+          'PacientesUTI - Pacientes encontrados:',
+          pacientesFiltrados.length
+        );
+        console.log('PacientesUTI - Estado atual:', pacientesFiltrados);
+        if (pacientesFiltrados.length === 0) {
+          console.log('PacientesUTI - Query retornou:', snapshot.size, 'docs');
+        }
+        setPacientesUTI(pacientesFiltrados);
         setLoading(false);
       } catch (error) {
         console.error('Erro ao carregar pacientes UTI:', error);
@@ -125,36 +169,20 @@ export const usePacientesUTI = () => {
   // Carregar leitos UTI vagos
   const carregarLeitosUTIVagos = async () => {
     try {
-      // Primeiro, buscar setores que são UTI
-      const setoresQuery = query(
-        collection(db, 'setoresRegulaFacil'),
-        where('nomeCompleto', '==', 'UTI')
+      const setorRef = doc(db, 'setoresRegulaFacil', '7UKUgMtFvxAdCSxLmea7');
+      const leitosQuery = query(
+        collection(db, 'leitosRegulaFacil'),
+        where('setor', '==', setorRef),
+        where('status', '==', 'vago')
       );
-      const setoresSnapshot = await getDocs(setoresQuery);
-      
-      const leitosUTI: LeitoUTI[] = [];
-      
-      for (const setorDoc of setoresSnapshot.docs) {
-        const setorRef = doc(db, 'setoresRegulaFacil', setorDoc.id);
-        
-        // Buscar leitos vagos neste setor
-        const leitosQuery = query(
-          collection(db, 'leitosRegulaFacil'),
-          where('setor', '==', setorRef),
-          where('status', '==', 'vago')
-        );
-        const leitosSnapshot = await getDocs(leitosQuery);
-        
-        leitosSnapshot.docs.forEach(leitoDoc => {
-          const leitoData = leitoDoc.data() as any;
-          leitosUTI.push({
-            id: leitoDoc.id,
-            codigo: leitoData?.codigo || '',
-            setorId: setorDoc.id
-          });
-        });
-      }
-      
+      const leitosSnapshot = await getDocs(leitosQuery);
+
+      const leitosUTI: LeitoUTI[] = leitosSnapshot.docs.map(leitoDoc => ({
+        id: leitoDoc.id,
+        codigo: (leitoDoc.data() as any)?.codigo || '',
+        setorId: '7UKUgMtFvxAdCSxLmea7'
+      }));
+
       setLeitosUTIVagos(leitosUTI);
       return leitosUTI;
     } catch (error) {
