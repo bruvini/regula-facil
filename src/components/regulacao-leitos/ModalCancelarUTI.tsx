@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { doc, updateDoc, deleteField, serverTimestamp, collection, addDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, deleteField, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { registrarLog } from '@/lib/logger';
 import { AlertTriangle } from 'lucide-react';
 
 interface ModalCancelarUTIProps {
@@ -42,19 +43,6 @@ const ModalCancelarUTI = ({ aberto, onFechar, paciente, onSucesso }: ModalCancel
     onFechar();
   };
 
-  const registrarLog = async (mensagem: string) => {
-    try {
-      await addDoc(collection(db, 'logsRegulaFacil'), {
-        tipo: 'cancelamento_uti',
-        mensagem,
-        pacienteId: paciente.id,
-        timestamp: serverTimestamp(),
-        usuario: 'Sistema' // TODO: Implementar autenticação
-      });
-    } catch (error) {
-      console.error('Erro ao registrar log:', error);
-    }
-  };
 
   const liberarLeitoReservado = async (batch: any) => {
     if (paciente.leitoDestino) {
@@ -115,7 +103,13 @@ const ModalCancelarUTI = ({ aberto, onFechar, paciente, onSucesso }: ModalCancel
           break;
       }
 
-      await registrarLog(mensagemLog);
+      await registrarLog({
+        pagina: 'Regulação de Leitos',
+        acao: 'Cancelar pedido de UTI',
+        alvo: paciente.id,
+        descricao: mensagemLog,
+        usuario: 'Sistema'
+      });
       onSucesso();
       handleFechar();
     } catch (error) {

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, getDoc, query, where, orderBy, Timestamp, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { registrarLog } from '@/lib/logger';
 import { Leito, Setor, Paciente, LeitoWithData, LogSistema } from '@/types/firestore';
 
 interface IsolamentoTipo {
@@ -215,7 +216,13 @@ export const useMapaLeitos = () => {
       await updateDoc(leitoRef, updateData);
 
       // Registrar log
-      await adicionarLog('Mapa de Leitos', `Alterar status para ${novoStatus}`, leitoId, `Status alterado para ${novoStatus}${motivo ? ` - Motivo: ${motivo}` : ''}`);
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: `Alterar status para ${novoStatus}`,
+        alvo: leitoId,
+        descricao: `Status alterado para ${novoStatus}${motivo ? ` - Motivo: ${motivo}` : ''}`,
+        usuario: 'Usuário Atual'
+      });
     } catch (err) {
       console.error('Erro ao atualizar status do leito:', err);
       throw new Error('Erro ao atualizar status do leito');
@@ -244,7 +251,13 @@ export const useMapaLeitos = () => {
         pacienteAtual: doc(db, 'pacientesRegulaFacil', pacienteId)
       });
 
-      await adicionarLog('Mapa de Leitos', 'Regular paciente', leitoId, `Paciente ${pacienteId} regulado para leito ${leitoId}`);
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Regular paciente',
+        alvo: leitoId,
+        descricao: `Paciente ${pacienteId} regulado para leito ${leitoId}`,
+        usuario: 'Usuário Atual'
+      });
     } catch (err) {
       console.error('Erro ao regular paciente:', err);
       throw new Error('Erro ao regular paciente');
@@ -286,20 +299,6 @@ export const useMapaLeitos = () => {
     }
   };
 
-  const adicionarLog = async (pagina: string, acao: string, alvo: string, descricao: string) => {
-    try {
-      await addDoc(collection(db, 'logsSistemaRegulaFacil'), {
-        pagina,
-        acao,
-        alvo,
-        usuario: 'Usuário Atual', // TODO: Implementar usuário real
-        timestamp: Timestamp.now(),
-        descricao
-      });
-    } catch (err) {
-      console.error('Erro ao adicionar log:', err);
-    }
-  };
 
   const adicionarSetor = async (setorData: Omit<Setor, 'id'>) => {
     try {
@@ -310,7 +309,13 @@ export const useMapaLeitos = () => {
       }
 
       await addDoc(collection(db, 'setoresRegulaFacil'), setorData);
-      await adicionarLog('Mapa de Leitos', 'Adicionar setor', 'novo', `Setor ${setorData.sigla} adicionado`);
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Adicionar setor',
+        alvo: 'novo',
+        descricao: `Setor ${setorData.sigla} adicionado`,
+        usuario: 'Usuário Atual'
+      });
     } catch (err) {
       console.error('Erro ao adicionar setor:', err);
       throw err;
@@ -329,7 +334,13 @@ export const useMapaLeitos = () => {
 
       const setorRef = doc(db, 'setoresRegulaFacil', setorId);
       await updateDoc(setorRef, setorData);
-      await adicionarLog('Mapa de Leitos', 'Editar setor', setorId, `Setor ${setorData.sigla} editado`);
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Editar setor',
+        alvo: setorId,
+        descricao: `Setor ${setorData.sigla} editado`,
+        usuario: 'Usuário Atual'
+      });
     } catch (err) {
       console.error('Erro ao editar setor:', err);
       throw err;
@@ -346,7 +357,13 @@ export const useMapaLeitos = () => {
 
       const setorRef = doc(db, 'setoresRegulaFacil', setorId);
       await deleteDoc(setorRef);
-      await adicionarLog('Mapa de Leitos', 'Excluir setor', setorId, `Setor excluído`);
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Excluir setor',
+        alvo: setorId,
+        descricao: 'Setor excluído',
+        usuario: 'Usuário Atual'
+      });
     } catch (err) {
       console.error('Erro ao excluir setor:', err);
       throw err;
@@ -359,7 +376,13 @@ export const useMapaLeitos = () => {
         ...leitoData,
         dataUltimaAtualizacaoStatus: Timestamp.now()
       });
-      await adicionarLog('Mapa de Leitos', 'Adicionar leito', 'novo', `Leito ${leitoData.codigo} adicionado`);
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Adicionar leito',
+        alvo: 'novo',
+        descricao: `Leito ${leitoData.codigo} adicionado`,
+        usuario: 'Usuário Atual'
+      });
     } catch (err) {
       console.error('Erro ao adicionar leito:', err);
       throw new Error('Erro ao adicionar leito');
@@ -370,7 +393,13 @@ export const useMapaLeitos = () => {
     try {
       const leitoRef = doc(db, 'leitosRegulaFacil', leitoId);
       await updateDoc(leitoRef, leitoData);
-      await adicionarLog('Mapa de Leitos', 'Editar leito', leitoId, `Leito ${leitoData.codigo} editado`);
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Editar leito',
+        alvo: leitoId,
+        descricao: `Leito ${leitoData.codigo} editado`,
+        usuario: 'Usuário Atual'
+      });
     } catch (err) {
       console.error('Erro ao editar leito:', err);
       throw new Error('Erro ao editar leito');
@@ -381,7 +410,13 @@ export const useMapaLeitos = () => {
     try {
       const leitoRef = doc(db, 'leitosRegulaFacil', leitoId);
       await deleteDoc(leitoRef);
-      await adicionarLog('Mapa de Leitos', 'Excluir leito', leitoId, `Leito excluído`);
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Excluir leito',
+        alvo: leitoId,
+        descricao: 'Leito excluído',
+        usuario: 'Usuário Atual'
+      });
     } catch (err) {
       console.error('Erro ao excluir leito:', err);
       throw new Error('Erro ao excluir leito');
@@ -390,14 +425,20 @@ export const useMapaLeitos = () => {
 
   const adicionarLeitosEmLote = async (leitosData: Array<Omit<Leito, 'id' | 'dataUltimaAtualizacaoStatus'>>) => {
     try {
-      const promises = leitosData.map(leitoData => 
+      const promises = leitosData.map(leitoData =>
         addDoc(collection(db, 'leitosRegulaFacil'), {
           ...leitoData,
           dataUltimaAtualizacaoStatus: Timestamp.now()
         })
       );
       await Promise.all(promises);
-      await adicionarLog('Mapa de Leitos', 'Adicionar leitos em lote', 'novo', `${leitosData.length} leitos adicionados`);
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Adicionar leitos em lote',
+        alvo: 'novo',
+        descricao: `${leitosData.length} leitos adicionados`,
+        usuario: 'Usuário Atual'
+      });
     } catch (err) {
       console.error('Erro ao adicionar leitos em lote:', err);
       throw new Error('Erro ao adicionar leitos em lote');
@@ -448,7 +489,6 @@ export const useMapaLeitos = () => {
     editarLeito,
     excluirLeito,
     adicionarLeitosEmLote,
-    verificarPacientesAguardandoRegulacao,
-    adicionarLog
+    verificarPacientesAguardandoRegulacao
   };
 };

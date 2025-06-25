@@ -9,6 +9,7 @@ import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { registrarLog } from '@/lib/logger';
 import { PacienteImportado, ResultadoImportacao, AcaoPacienteRemovido } from '@/types/importacao';
 
 interface ImportacaoConfirmacaoProps {
@@ -259,13 +260,12 @@ const ImportacaoConfirmacao = ({ dadosValidados, onVoltar, onFinalizar }: Import
       setMensagemProgresso('Registrando logs...');
 
       // Registrar log da importação
-      await addDoc(collection(db, 'logsSistemaRegulaFacil'), {
+      await registrarLog({
         pagina: 'Regulação de Leitos',
         acao: 'Importação de planilha',
         alvo: 'sistema',
-        usuario: 'Sistema',
-        timestamp: Timestamp.now(),
-        descricao: `Importação realizada: ${resultado.pacientesIncluidos} incluídos, ${resultado.pacientesAlterados} alterados, ${resultado.pacientesRemovidos} removidos`
+        descricao: `Importação realizada: ${resultado.pacientesIncluidos} incluídos, ${resultado.pacientesAlterados} alterados, ${resultado.pacientesRemovidos} removidos`,
+        usuario: 'Sistema'
       });
 
       setProgresso(100);

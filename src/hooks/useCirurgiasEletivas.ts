@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, addDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { registrarLog } from '@/lib/logger';
 
 interface PedidoCirurgia {
   id: string;
@@ -110,13 +111,12 @@ export const useCirurgiasEletivas = () => {
       });
 
       // Gerar log
-      await addDoc(collection(db, 'logsSistemaRegulaFacil'), {
+      await registrarLog({
         pagina: 'Regulação de Leitos',
         acao: 'Reservar leito para cirurgia',
         alvo: leitoId,
-        usuario: 'Sistema',
-        timestamp: Timestamp.now(),
-        descricao: `Leito ${leitoId} reservado para paciente ${nomePaciente} - Dr. ${medicoSolicitante}`
+        descricao: `Leito ${leitoId} reservado para paciente ${nomePaciente} - Dr. ${medicoSolicitante}`,
+        usuario: 'Sistema'
       });
 
       // Recarregar dados
@@ -148,13 +148,12 @@ export const useCirurgiasEletivas = () => {
       });
 
       // Gerar log
-      await addDoc(collection(db, 'logsSistemaRegulaFacil'), {
+      await registrarLog({
         pagina: 'Regulação de Leitos',
         acao: 'Cancelar reserva de leito',
         alvo: leitoId,
-        usuario: 'Sistema',
-        timestamp: Timestamp.now(),
-        descricao: `Reserva do leito ${leitoId} cancelada`
+        descricao: `Reserva do leito ${leitoId} cancelada`,
+        usuario: 'Sistema'
       });
 
       await carregarPacientesCirurgiaEletiva();

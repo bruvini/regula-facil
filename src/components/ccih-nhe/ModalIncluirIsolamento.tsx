@@ -6,8 +6,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, User, MapPin, Calendar, CheckCircle } from "lucide-react";
-import { collection, query, where, onSnapshot, doc, getDoc, updateDoc, addDoc, Timestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { registrarLog } from "@/lib/logger";
 import { useToast } from "@/hooks/use-toast";
 
 interface Paciente {
@@ -230,14 +231,13 @@ const ModalIncluirIsolamento = ({ open, onOpenChange }: ModalIncluirIsolamentoPr
         isolamentosAtivos: [...isolamentosExistentes, ...isolamentosParaAdicionar]
       });
 
-      // Gerar log na coleção de movimentações
-      await addDoc(collection(db, 'movimentacoesRegulaFacil'), {
-        tipo: "Inclusão de Isolamento",
-        nomePaciente: pacienteSelecionado.nomePaciente,
-        leitoAtualPaciente: pacienteSelecionado.leitoAtualPaciente,
-        setorAtualPaciente: pacienteSelecionado.setorAtualPaciente,
-        isolamentosIncluidos: isolamentosParaAdicionar.map(iso => iso.nomeIsolamento),
-        dataHora: Timestamp.now()
+      // Registrar log
+      await registrarLog({
+        pagina: 'CCIH',
+        acao: 'Incluir isolamento',
+        alvo: pacienteSelecionado.id,
+        descricao: `Isolamentos adicionados: ${isolamentosParaAdicionar.map(iso => iso.nomeIsolamento).join(', ')}`,
+        usuario: 'Sistema'
       });
 
       toast({

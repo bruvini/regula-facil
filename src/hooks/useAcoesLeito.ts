@@ -1,54 +1,14 @@
 
 import { useState } from 'react';
-import { doc, updateDoc, Timestamp, addDoc, collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, Timestamp, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { registrarLog } from '@/lib/logger';
 import { useToast } from '@/hooks/use-toast';
 
 export const useAcoesLeito = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const adicionarLog = async (acao: string, alvo: string, descricao: string) => {
-    try {
-      await addDoc(collection(db, 'logsSistemaRegulaFacil'), {
-        pagina: 'Mapa de Leitos',
-        acao,
-        alvo,
-        usuario: 'Usuário Atual',
-        timestamp: Timestamp.now(),
-        descricao
-      });
-    } catch (err) {
-      console.error('Erro ao adicionar log:', err);
-    }
-  };
-
-  const adicionarLogPaciente = async (tipo: string, pacienteId: string, leitoId: string, setorId: string, descricao: string) => {
-    try {
-      await addDoc(collection(db, 'logsPacientesRegulaFacil'), {
-        tipo,
-        pacienteId,
-        leitoId,
-        setorId,
-        timestamp: Timestamp.now(),
-        usuario: 'Usuário Atual',
-        descricao
-      });
-    } catch (err) {
-      console.error('Erro ao adicionar log do paciente:', err);
-    }
-  };
-
-  const registrarLogMovimentacao = async (descricao: string) => {
-    try {
-      await addDoc(collection(db, 'logsMovimentacoesRegulaFacil'), {
-        descricao,
-        timestamp: Timestamp.now()
-      });
-    } catch (err) {
-      console.error('Erro ao registrar movimentação:', err);
-    }
-  };
 
   const sinalizarAguardandoUTI = async (
     leitoId: string,
@@ -66,9 +26,13 @@ export const useAcoesLeito = () => {
         dataPedidoUTI: Timestamp.now()
       });
 
-      await registrarLogMovimentacao(
-        `Paciente ${nomePaciente} sinalizado aguardando UTI no leito ${leitoCodigo} do setor ${setorNome}.`
-      );
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Sinalizar aguardando UTI',
+        alvo: leitoId,
+        descricao: `Paciente ${nomePaciente} sinalizado aguardando UTI no leito ${leitoCodigo} do setor ${setorNome}.`,
+        usuario: 'Usuário Atual'
+      });
 
       toast({
         title: "UTI solicitada",
@@ -101,14 +65,14 @@ export const useAcoesLeito = () => {
         dataPedidoUTI: null
       });
 
-      // Registrar log do paciente
-      await adicionarLogPaciente(
-        'cancelamento_uti',
-        pacienteId,
-        '',
-        '',
-        `Pedido de UTI cancelado para ${nomePaciente}. Motivo: ${motivo}`
-      );
+      // Registrar log
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Cancelar pedido UTI',
+        alvo: pacienteId,
+        descricao: `Pedido de UTI cancelado para ${nomePaciente}. Motivo: ${motivo}`,
+        usuario: 'Usuário Atual'
+      });
 
       toast({
         title: "Pedido cancelado",
@@ -151,9 +115,13 @@ export const useAcoesLeito = () => {
         pacienteAtual: null
       });
 
-      await registrarLogMovimentacao(
-        `Alta realizada para o paciente ${nomePaciente} no leito ${leitoCodigo} do setor ${setorNome}.`
-      );
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Dar alta',
+        alvo: leitoId,
+        descricao: `Alta realizada para o paciente ${nomePaciente} no leito ${leitoCodigo} do setor ${setorNome}.`,
+        usuario: 'Usuário Atual'
+      });
 
       toast({
         title: "Alta realizada com sucesso",
@@ -193,9 +161,13 @@ export const useAcoesLeito = () => {
         dataPedidoRemanejamento: Timestamp.now()
       });
 
-      await registrarLogMovimentacao(
-        `Remanejamento solicitado para o paciente ${nomePaciente} no leito ${leitoCodigo} do setor ${setorNome}. Motivo: ${motivo}`
-      );
+      await registrarLog({
+        pagina: 'Mapa de Leitos',
+        acao: 'Solicitar remanejamento',
+        alvo: leitoId,
+        descricao: `Remanejamento solicitado para o paciente ${nomePaciente} no leito ${leitoCodigo} do setor ${setorNome}. Motivo: ${motivo}`,
+        usuario: 'Usuário Atual'
+      });
 
       toast({
         title: "Remanejamento solicitado com sucesso",

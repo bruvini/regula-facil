@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc, addDoc, Timestamp, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, Timestamp, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { registrarLog } from '@/lib/logger';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -235,13 +236,12 @@ const PacientesVigilancia = () => {
 
       const descricaoLog = `Paciente ${nomePaciente} teve o isolamento ${nomeIsolamento} removido em ${new Date().toLocaleString('pt-BR')}. Regras cumpridas: ${regrasCumpridas.length > 0 ? regrasCumpridas.join(', ') : 'Nenhuma regra específica'}.`;
 
-      await addDoc(collection(db, 'movimentacoesRegulaFacil'), {
-        tipo: 'Remoção de Isolamento',
+      await registrarLog({
+        pagina: 'CCIH',
+        acao: 'Remover isolamento',
+        alvo: pacienteId,
         descricao: descricaoLog,
-        nomePaciente,
-        isolamentoRemovido: nomeIsolamento,
-        regrasCumpridas,
-        dataHora: Timestamp.now()
+        usuario: 'Sistema'
       });
 
       const novasRegras = { ...regrasChecadas };

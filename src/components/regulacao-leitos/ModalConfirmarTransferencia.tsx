@@ -2,8 +2,9 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { doc, updateDoc, deleteField, serverTimestamp, collection, addDoc, writeBatch, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteField, serverTimestamp, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { registrarLog } from '@/lib/logger';
 import { CheckCircle } from 'lucide-react';
 
 interface ModalConfirmarTransferenciaProps {
@@ -32,19 +33,6 @@ const ModalConfirmarTransferencia = ({ aberto, onFechar, paciente, onSucesso }: 
     return `${horas}h ${minutos}min`;
   };
 
-  const registrarLog = async (mensagem: string) => {
-    try {
-      await addDoc(collection(db, 'logsRegulaFacil'), {
-        tipo: 'transferencia_uti',
-        mensagem,
-        pacienteId: paciente.id,
-        timestamp: serverTimestamp(),
-        usuario: 'Sistema'
-      });
-    } catch (error) {
-      console.error('Erro ao registrar log:', error);
-    }
-  };
 
   const handleConfirmar = async () => {
     if (!paciente.leitoDestino) return;
@@ -80,7 +68,9 @@ const ModalConfirmarTransferencia = ({ aberto, onFechar, paciente, onSucesso }: 
 
       // Atualizar leito anterior (se houver)
       if (paciente.leitoAtualPaciente) {
-        const leitoAnteriorRef = paciente.leitoAtualPaciente;
+        const leitoAnteriorRef = typeof paciente.leitoAtualPaciente === 'string'
+          ? doc(db, 'leitosRegulaFacil', paciente.leitoAtualPaciente)
+          : doc(db, 'leitosRegulaFacil', paciente.leitoAtualPaciente.id);
         batch.update(leitoAnteriorRef, {
           status: 'limpeza',
           dataUltimaAtualizacaoStatus: serverTimestamp()
@@ -99,7 +89,13 @@ const ModalConfirmarTransferencia = ({ aberto, onFechar, paciente, onSucesso }: 
       // Registrar log
       const tempoEspera = calcularTempoEspera(paciente.dataPedidoUTI);
       const mensagemLog = `Transferência para leito ${codigoLeitoDestino} confirmada para paciente ${paciente.nomePaciente} após ${tempoEspera}.`;
-      await registrarLog(mensagemLog);
+      await registrarLog({
+        pagina: 'Regulação de Leitos',
+        acao: 'Confirmar transferência UTI',
+        alvo: codigoLeitoDestino,
+        descricao: mensagemLog,
+        usuario: 'Sistema'
+      });
 
       onSucesso();
       onFechar();

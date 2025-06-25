@@ -2,8 +2,9 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { doc, deleteDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { registrarLog } from '@/lib/logger';
 import { AlertTriangle } from 'lucide-react';
 
 interface ModalExcluirPedidoProps {
@@ -29,13 +30,12 @@ const ModalExcluirPedido = ({ aberto, onFechar, pedido, onSucesso }: ModalExclui
       // Registrar log
       const logTexto = `Pedido de cirurgia excluído para ${pedido.nomePaciente} em ${new Date().toLocaleString('pt-BR')}`;
       
-      await addDoc(collection(db, 'logsSistema'), {
+      await registrarLog({
         pagina: 'Marcação Cirúrgica',
         acao: 'Excluir Pedido',
         alvo: pedido.nomePaciente,
-        usuario: 'Sistema',
-        timestamp: serverTimestamp(),
-        descricao: logTexto
+        descricao: logTexto,
+        usuario: 'Sistema'
       });
 
       onSucesso();
