@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { doc, updateDoc, Timestamp, addDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, updateDoc, Timestamp, addDoc, collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,7 +39,24 @@ export const useAcoesLeito = () => {
     }
   };
 
-  const sinalizarAguardandoUTI = async (leitoId: string, pacienteId: string, nomePaciente: string, setorId: string) => {
+  const registrarLogMovimentacao = async (descricao: string) => {
+    try {
+      await addDoc(collection(db, 'logsMovimentacoesRegulaFacil'), {
+        descricao,
+        timestamp: Timestamp.now()
+      });
+    } catch (err) {
+      console.error('Erro ao registrar movimentação:', err);
+    }
+  };
+
+  const sinalizarAguardandoUTI = async (
+    leitoId: string,
+    pacienteId: string,
+    nomePaciente: string,
+    leitoCodigo: string,
+    setorNome: string
+  ) => {
     setLoading(true);
     try {
       // Atualizar campos do paciente
@@ -49,20 +66,8 @@ export const useAcoesLeito = () => {
         dataPedidoUTI: Timestamp.now()
       });
 
-      // Registrar log do sistema
-      await adicionarLog(
-        'Sinalizar aguardando UTI',
-        leitoId,
-        `Paciente ${nomePaciente} sinalizado como aguardando UTI`
-      );
-
-      // Registrar log do paciente
-      await adicionarLogPaciente(
-        'pedido_uti',
-        pacienteId,
-        leitoId,
-        setorId,
-        `Paciente ${nomePaciente} sinalizado como aguardando UTI`
+      await registrarLogMovimentacao(
+        `Paciente ${nomePaciente} sinalizado aguardando UTI no leito ${leitoCodigo} do setor ${setorNome}.`
       );
 
       toast({
@@ -126,31 +131,18 @@ export const useAcoesLeito = () => {
     }
   };
 
-  const darAlta = async (leitoId: string, pacienteId: string, nomePaciente: string) => {
+  const darAlta = async (
+    leitoId: string,
+    pacienteId: string,
+    nomePaciente: string,
+    leitoCodigo: string,
+    setorNome: string
+  ) => {
     setLoading(true);
     try {
-      // Buscar referência do leito
       const leitoRef = doc(db, 'leitosRegulaFacil', leitoId);
-      
-      // Buscar paciente baseado no leitoAtualPaciente
-      const pacientesQuery = query(
-        collection(db, 'pacientesRegulaFacil'),
-        where('leitoAtualPaciente', '==', leitoRef)
-      );
-      const pacientesSnapshot = await getDocs(pacientesQuery);
-      
-      if (!pacientesSnapshot.empty) {
-        const pacienteDoc = pacientesSnapshot.docs[0];
-        
-        // Atualizar status do paciente
-        await updateDoc(pacienteDoc.ref, {
-          statusInternacao: 'alta',
-          leitoAtualPaciente: null,
-          setorAtualPaciente: null,
-          aguardaUTI: false,
-          dataPedidoUTI: null
-        });
-      }
+
+      await deleteDoc(doc(db, 'pacientesRegulaFacil', pacienteId));
 
       // Atualizar status do leito para limpeza
       await updateDoc(leitoRef, {
@@ -159,11 +151,8 @@ export const useAcoesLeito = () => {
         pacienteAtual: null
       });
 
-      // Registrar log
-      await adicionarLog(
-        'Alta de paciente',
-        leitoId,
-        `Alta do paciente ${nomePaciente} - Leito liberado para limpeza`
+      await registrarLogMovimentacao(
+        `Alta realizada para o paciente ${nomePaciente} no leito ${leitoCodigo} do setor ${setorNome}.`
       );
 
       toast({
@@ -187,44 +176,34 @@ export const useAcoesLeito = () => {
     }
   };
 
-  const solicitarRemanejamento = async (leitoId: string, nomePaciente: string) => {
+  const solicitarRemanejamento = async (
+    leitoId: string,
+    pacienteId: string,
+    nomePaciente: string,
+    leitoCodigo: string,
+    setorNome: string,
+    motivo: string
+  ) => {
     setLoading(true);
     try {
-      // Buscar referência do leito
-      const leitoRef = doc(db, 'leitosRegulaFacil', leitoId);
-      
-      // Buscar paciente baseado no leitoAtualPaciente
-      const pacientesQuery = query(
-        collection(db, 'pacientesRegulaFacil'),
-        where('leitoAtualPaciente', '==', leitoRef)
+      const pacienteRef = doc(db, 'pacientesRegulaFacil', pacienteId);
+      await updateDoc(pacienteRef, {
+        remanejarPaciente: true,
+        motivoRemanejamento: motivo,
+        dataPedidoRemanejamento: Timestamp.now()
+      });
+
+      await registrarLogMovimentacao(
+        `Remanejamento solicitado para o paciente ${nomePaciente} no leito ${leitoCodigo} do setor ${setorNome}. Motivo: ${motivo}`
       );
-      const pacientesSnapshot = await getDocs(pacientesQuery);
-      
-      if (!pacientesSnapshot.empty) {
-        const pacienteDoc = pacientesSnapshot.docs[0];
-        
-        // Atualizar status de regulação do paciente
-        await updateDoc(pacienteDoc.ref, {
-          statusRegulacao: 'AGUARDANDO_REMANEJAMENTO'
-        });
 
-        // Registrar log
-        await adicionarLog(
-          'Solicitação de remanejamento',
-          pacienteDoc.id,
-          `Remanejamento solicitado para o paciente ${nomePaciente}`
-        );
+      toast({
+        title: "Remanejamento solicitado com sucesso",
+        description: `${nomePaciente} foi incluído na fila de remanejamento.`,
+        duration: 3000
+      });
 
-        toast({
-          title: "Remanejamento solicitado com sucesso",
-          description: `${nomePaciente} foi incluído na fila de remanejamento.`,
-          duration: 3000
-        });
-
-        return true;
-      } else {
-        throw new Error('Paciente não encontrado no leito');
-      }
+      return true;
     } catch (err) {
       console.error('Erro ao solicitar remanejamento:', err);
       toast({

@@ -87,17 +87,14 @@ export const useMapaLeitos = () => {
                 }
               }
 
-              // Buscar dados do paciente usando setorAtualPaciente e leitoAtualPaciente
+              // Buscar dados do paciente utilizando o campo "leitoAtualPaciente"
+              // que armazena o código do leito ocupado
               let pacienteData: Paciente | undefined;
-              if (leitoData.status === 'ocupado' && setorData) {
+              if (leitoData.status === 'ocupado') {
                 try {
-                  const leitoRef = doc(db, 'leitosRegulaFacil', leitoData.id);
-                  const setorRef = doc(db, 'setoresRegulaFacil', setorData.id);
-                  
                   const pacientesQuery = query(
                     collection(db, 'pacientesRegulaFacil'),
-                    where('leitoAtualPaciente', '==', leitoRef),
-                    where('setorAtualPaciente', '==', setorRef)
+                    where('leitoAtualPaciente', '==', leitoData.codigo)
                   );
                   const pacientesSnapshot = await getDocs(pacientesQuery);
                   
@@ -141,7 +138,12 @@ export const useMapaLeitos = () => {
                       statusInternacao: pacienteDocData.statusInternacao || '',
                       isolamentosAtivos: pacienteDocData.isolamentosAtivos || [],
                       especialidade: pacienteDocData.especialidade || '',
-                      statusRegulacao: pacienteDocData.statusRegulacao || ''
+                      statusRegulacao: pacienteDocData.statusRegulacao || '',
+                      aguardaUTI: pacienteDocData.aguardaUTI || false,
+                      dataPedidoUTI: pacienteDocData.dataPedidoUTI || null,
+                      remanejarPaciente: pacienteDocData.remanejarPaciente || false,
+                      motivoRemanejamento: pacienteDocData.motivoRemanejamento || '',
+                      dataPedidoRemanejamento: pacienteDocData.dataPedidoRemanejamento || null
                     } as Paciente;
                   }
                 } catch (err) {

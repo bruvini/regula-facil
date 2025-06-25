@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { LeitoWithData } from '@/types/firestore';
 import ModalConfirmacaoAlta from './ModalConfirmacaoAlta';
+import ModalRemanejamento from './ModalRemanejamento';
 import { useAcoesLeito } from '@/hooks/useAcoesLeito';
 
 interface CardLeitoCompactoProps {
@@ -40,6 +41,7 @@ const statusConfig = {
 const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
   const [tempoDecorrido, setTempoDecorrido] = useState('');
   const [modalAltaAberto, setModalAltaAberto] = useState(false);
+  const [modalRemanejarAberto, setModalRemanejarAberto] = useState(false);
   const { loading, darAlta, solicitarRemanejamento, sinalizarAguardandoUTI } = useAcoesLeito();
   
   const statusInfo = statusConfig[leito.status] || statusConfig.vago;
@@ -76,26 +78,40 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
 
   const handleConfirmarAlta = async () => {
     if (leito.pacienteData) {
-      const sucesso = await darAlta(leito.id, leito.pacienteData.id, leito.pacienteData.nome);
+      const sucesso = await darAlta(
+        leito.id,
+        leito.pacienteData.id,
+        leito.pacienteData.nome,
+        leito.codigo,
+        leito.setorData?.nomeCompleto || ''
+      );
       if (sucesso) {
         setModalAltaAberto(false);
       }
     }
   };
 
-  const handleRemanejamento = async () => {
+  const handleRemanejamento = async (motivo: string) => {
     if (leito.pacienteData) {
-      await solicitarRemanejamento(leito.id, leito.pacienteData.nome);
+      await solicitarRemanejamento(
+        leito.id,
+        leito.pacienteData.id,
+        leito.pacienteData.nome,
+        leito.codigo,
+        leito.setorData?.nomeCompleto || '',
+        motivo
+      );
     }
   };
 
   const handleAguardandoUTI = async () => {
     if (leito.pacienteData && leito.setorData) {
       await sinalizarAguardandoUTI(
-        leito.id, 
-        leito.pacienteData.id, 
+        leito.id,
+        leito.pacienteData.id,
         leito.pacienteData.nome,
-        leito.setorData.id
+        leito.codigo,
+        leito.setorData?.nomeCompleto || ''
       );
     }
   };
@@ -147,11 +163,11 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
         acoes.push(
           <Tooltip key="remanejar">
             <TooltipTrigger asChild>
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                className="p-0.5 h-5 w-5" 
-                onClick={handleRemanejamento}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="p-0.5 h-5 w-5"
+                onClick={() => setModalRemanejarAberto(true)}
                 disabled={loading}
               >
                 <ArrowUpDown className="w-3 h-3" />
@@ -161,16 +177,24 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
           </Tooltip>
         );
         
-        // Adicionar botão UTI apenas se não for setor UTI
-        if (!ehSetorUTI) {
+        // Adicionar botão UTI apenas se não for setor UTI e ainda não solicitado
+        if (!ehSetorUTI && !leito.pacienteData?.aguardaUTI) {
           acoes.push(
             <Tooltip key="uti">
               <TooltipTrigger asChild>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  className="p-0.5 h-5 w-5 text-red-600" 
-                  onClick={handleAguardandoUTI}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="p-0.5 h-5 w-5 text-red-600"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Confirmar que o paciente ${leito.pacienteData?.nome} está aguardando leito de UTI?`
+                      )
+                    ) {
+                      handleAguardandoUTI();
+                    }
+                  }}
                   disabled={loading}
                 >
                   <Cross className="w-3 h-3" />
@@ -184,17 +208,31 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
         acoes.push(
           <Tooltip key="detalhes">
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" className="p-0.5 h-5 w-5" onClick={() => onAcao('detalhes', leito.id)}>
+              <Button size="sm" variant="ghost" className="p-0.5 h-5 w-5">
                 <Eye className="w-3 h-3" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
               <div className="space-y-1 text-sm">
-                <p><strong>Nome:</strong> {leito.pacienteData?.nome || 'Não informado'}</p>
-                <p><strong>Sexo:</strong> {leito.pacienteData?.sexo === 'M' ? 'Masculino' : leito.pacienteData?.sexo === 'F' ? 'Feminino' : 'Não informado'}</p>
-                <p><strong>Idade:</strong> {leito.pacienteData?.idade ? `${leito.pacienteData.idade} anos` : 'Não informada'}</p>
-                {leito.pacienteData?.especialidade && (
-                  <p><strong>Especialidade:</strong> {leito.pacienteData.especialidade}</p>
+                <p>
+                  <strong>Nome:</strong> {leito.pacienteData?.nome || 'Não informado'}
+                </p>
+                <p>
+                  <strong>Sexo:</strong>{' '}
+                  {leito.pacienteData?.sexo === 'F' ? 'Feminino' : 'Masculino'}
+                </p>
+                <p>
+                  <strong>Idade:</strong>{' '}
+                  {leito.pacienteData?.idade ? `${leito.pacienteData.idade} anos` : 'Não informada'}
+                </p>
+                {leito.pacienteData?.aguardaUTI && (
+                  <p>🩺 Aguardando leito de UTI</p>
+                )}
+                {leito.pacienteData?.remanejarPaciente && (
+                  <p>
+                    🔁 Aguardando Remanejamento – Motivo:{' '}
+                    {leito.pacienteData.motivoRemanejamento}
+                  </p>
                 )}
               </div>
             </TooltipContent>
@@ -275,8 +313,17 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
           {/* Linha 3: Paciente/Motivo */}
           <div className="min-h-[12px] text-xs">
             {leito.status === 'ocupado' && leito.pacienteData && (
-              <p className="font-medium truncate text-xs" title={leito.pacienteData.nome}>
-                {leito.pacienteData.nome}
+              <p
+                className="font-medium truncate text-xs flex items-center gap-1"
+                title={leito.pacienteData.nome}
+              >
+                {leito.pacienteData.sexo === 'M' && (
+                  <span className="text-blue-500">👨</span>
+                )}
+                {leito.pacienteData.sexo === 'F' && (
+                  <span className="text-pink-500">👩</span>
+                )}
+                <span className="truncate">{leito.pacienteData.nome}</span>
               </p>
             )}
             
@@ -302,7 +349,14 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
         aberto={modalAltaAberto}
         onFechar={() => setModalAltaAberto(false)}
         nomePaciente={leito.pacienteData?.nome || 'Paciente'}
+        leitoCodigo={leito.codigo}
         onConfirmar={handleConfirmarAlta}
+        loading={loading}
+      />
+      <ModalRemanejamento
+        aberto={modalRemanejarAberto}
+        onFechar={() => setModalRemanejarAberto(false)}
+        onConfirmar={handleRemanejamento}
         loading={loading}
       />
     </TooltipProvider>
