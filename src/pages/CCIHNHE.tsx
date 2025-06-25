@@ -7,11 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, Shield, Users, AlertTriangle, Eye, Settings, Plus, Activity } from "lucide-react";
 import { useState } from "react";
+import ModalGerenciarIsolamentos from "@/components/ccih-nhe/ModalGerenciarIsolamentos";
 
 const CCIHNHE = () => {
   const [busca, setBusca] = useState("");
   const [sexoSelecionado, setSexoSelecionado] = useState("todos");
   const [isolamentosSelecionados, setIsolamentosSelecionados] = useState<string[]>([]);
+  const [modalIsolamentosAberto, setModalIsolamentosAberto] = useState(false);
 
   // Mock data - will be replaced with real data later
   const isolamentosDisponiveis = [
@@ -126,7 +128,11 @@ const CCIHNHE = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Ações</label>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setModalIsolamentosAberto(true)}
+                  >
                     <Settings className="h-4 w-4 mr-2" />
                     Gerenciar Isolamentos
                   </Button>
@@ -190,6 +196,12 @@ const CCIHNHE = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Modal de Gerenciar Isolamentos */}
+        <ModalGerenciarIsolamentos 
+          open={modalIsolamentosAberto}
+          onOpenChange={setModalIsolamentosAberto}
+        />
       </div>
     </Layout>
   );
