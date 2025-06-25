@@ -3,10 +3,10 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { doc, updateDoc, serverTimestamp, collection, query, where, getDocs, getDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Hospital, Bed } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface LeitoDisponivel {
   id: string;
@@ -112,7 +112,7 @@ const ModalInformarLeito = ({ aberto, onFechar, paciente, onSucesso }: ModalInfo
 
   return (
     <Dialog open={aberto} onOpenChange={handleFechar}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Hospital className="h-5 w-5 text-green-500" />
@@ -126,30 +126,52 @@ const ModalInformarLeito = ({ aberto, onFechar, paciente, onSucesso }: ModalInfo
           </p>
 
           {carregandoLeitos ? (
-            <div className="text-center py-4">
+            <div className="text-center py-8">
               <p className="text-sm text-gray-500">Carregando leitos disponíveis...</p>
             </div>
           ) : leitosDisponiveis.length === 0 ? (
-            <div className="text-center py-4">
+            <div className="text-center py-8">
               <p className="text-sm text-gray-500">Nenhum leito disponível na UTI no momento.</p>
             </div>
           ) : (
             <div className="space-y-3">
               <Label>Leitos disponíveis:</Label>
-              <RadioGroup value={leitoSelecionado} onValueChange={setLeitoSelecionado}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {leitosDisponiveis.map((leito) => (
-                  <div key={leito.id} className="flex items-center space-x-2">
-                    <RadioGroupItem value={leito.id} id={leito.id} />
-                    <Label htmlFor={leito.id} className="flex items-center gap-2 cursor-pointer">
-                      <Bed className="h-4 w-4" />
-                      <div>
-                        <div className="font-medium">Leito {leito.codigo}</div>
-                        <div className="text-sm text-gray-500">{leito.setorNome}</div>
+                  <div
+                    key={leito.id}
+                    className={cn(
+                      "p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50",
+                      leitoSelecionado === leito.id
+                        ? "border-green-500 bg-green-50"
+                        : "border-gray-200"
+                    )}
+                    onClick={() => setLeitoSelecionado(leito.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-4 h-4 rounded-full border-2 flex items-center justify-center",
+                        leitoSelecionado === leito.id
+                          ? "border-green-500 bg-green-500"
+                          : "border-gray-300"
+                      )}>
+                        {leitoSelecionado === leito.id && (
+                          <div className="w-2 h-2 bg-white rounded-full" />
+                        )}
                       </div>
-                    </Label>
+                      <Bed className="h-5 w-5 text-gray-600" />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">
+                          Leito {leito.codigo}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {leito.setorNome}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ))}
-              </RadioGroup>
+              </div>
             </div>
           )}
         </div>

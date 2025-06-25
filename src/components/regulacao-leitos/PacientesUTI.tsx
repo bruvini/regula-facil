@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Clock, User, ChevronDown, ChevronUp, X, Hospital, RotateCcw } from "lucide-react";
+import { Clock, User, ChevronDown, ChevronUp, X, Hospital, RotateCcw, CheckCircle } from "lucide-react";
 import ModalCancelarUTI from "./ModalCancelarUTI";
 import ModalInformarLeito from "./ModalInformarLeito";
 import ModalCancelarReserva from "./ModalCancelarReserva";
+import ModalConfirmarTransferencia from "./ModalConfirmarTransferencia";
 
 interface Paciente {
   id: string;
@@ -22,6 +23,7 @@ interface Paciente {
   setorNome?: string;
   leitoCodigo?: string;
   leitoDestino?: string;
+  leitoDestinoNome?: string;
   setorDestino?: any;
 }
 
@@ -32,6 +34,7 @@ const PacientesUTI = () => {
   const [modalCancelarAberto, setModalCancelarAberto] = useState(false);
   const [modalInformarLeitoAberto, setModalInformarLeitoAberto] = useState(false);
   const [modalCancelarReservaAberto, setModalCancelarReservaAberto] = useState(false);
+  const [modalConfirmarTransferenciaAberto, setModalConfirmarTransferenciaAberto] = useState(false);
   const [pacienteSelecionado, setPacienteSelecionado] = useState<Paciente | null>(null);
 
   // Calcular tempo de espera
@@ -73,7 +76,7 @@ const PacientesUTI = () => {
             }
           }
 
-          // Buscar dados do leito
+          // Buscar dados do leito atual
           let leitoCodigo = '';
           if (data.leitoAtualPaciente) {
             try {
@@ -87,6 +90,20 @@ const PacientesUTI = () => {
             }
           }
 
+          // Buscar dados do leito destino (se houver)
+          let leitoDestinoNome = '';
+          if (data.leitoDestino) {
+            try {
+              const leitoDestinoDoc = await getDoc(doc(db, 'leitosRegulaFacil', data.leitoDestino));
+              if (leitoDestinoDoc.exists()) {
+                const leitoDestinoData = leitoDestinoDoc.data() as { codigo?: string };
+                leitoDestinoNome = leitoDestinoData?.codigo || '';
+              }
+            } catch (error) {
+              console.error('Erro ao buscar leito destino:', error);
+            }
+          }
+
           return {
             id: docRef.id,
             nomePaciente: data.nomePaciente,
@@ -97,6 +114,7 @@ const PacientesUTI = () => {
             setorNome,
             leitoCodigo,
             leitoDestino: data.leitoDestino,
+            leitoDestinoNome,
             setorDestino: data.setorDestino,
           } as Paciente;
         })
@@ -139,6 +157,11 @@ const PacientesUTI = () => {
   const handleCancelarReserva = (paciente: Paciente) => {
     setPacienteSelecionado(paciente);
     setModalCancelarReservaAberto(true);
+  };
+
+  const handleConfirmarTransferencia = (paciente: Paciente) => {
+    setPacienteSelecionado(paciente);
+    setModalConfirmarTransferenciaAberto(true);
   };
 
   const handleSucessoModal = () => {
@@ -195,7 +218,7 @@ const PacientesUTI = () => {
                         </div>
                         {paciente.leitoDestino && (
                           <div className="text-sm text-green-600 mt-1 font-medium">
-                            ✅ Leito reservado
+                            ✅ Leito reservado: {paciente.leitoDestinoNome}
                           </div>
                         )}
                       </div>
@@ -233,21 +256,39 @@ const PacientesUTI = () => {
                             </TooltipContent>
                           </Tooltip>
                         ) : (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCancelarReserva(paciente)}
-                                className="h-8 w-8 p-0 hover:bg-orange-100"
-                              >
-                                <RotateCcw className="h-4 w-4 text-orange-600" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              Cancelar reserva de leito
-                            </TooltipContent>
-                          </Tooltip>
+                          <>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCancelarReserva(paciente)}
+                                  className="h-8 w-8 p-0 hover:bg-orange-100"
+                                >
+                                  <RotateCcw className="h-4 w-4 text-orange-600" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Cancelar reserva de leito
+                              </TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleConfirmarTransferencia(paciente)}
+                                  className="h-8 w-8 p-0 hover:bg-blue-100"
+                                >
+                                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Confirmar transferência para UTI
+                              </TooltipContent>
+                            </Tooltip>
+                          </>
                         )}
                       </div>
                     </div>
@@ -293,6 +334,19 @@ const PacientesUTI = () => {
               id: pacienteSelecionado.id,
               nomePaciente: pacienteSelecionado.nomePaciente,
               leitoDestino: pacienteSelecionado.leitoDestino
+            }}
+            onSucesso={handleSucessoModal}
+          />
+
+          <ModalConfirmarTransferencia
+            aberto={modalConfirmarTransferenciaAberto}
+            onFechar={() => setModalConfirmarTransferenciaAberto(false)}
+            paciente={{
+              id: pacienteSelecionado.id,
+              nomePaciente: pacienteSelecionado.nomePaciente,
+              leitoDestino: pacienteSelecionado.leitoDestino,
+              leitoAtualPaciente: pacienteSelecionado.leitoAtualPaciente,
+              dataPedidoUTI: pacienteSelecionado.dataPedidoUTI
             }}
             onSucesso={handleSucessoModal}
           />
