@@ -56,7 +56,7 @@ const PacientesUTI = () => {
             try {
               const setorDoc = await getDoc(data.setorAtualPaciente);
               if (setorDoc.exists()) {
-                const setorData = setorDoc.data();
+                const setorData = setorDoc.data() as { sigla?: string; nomeCompleto?: string };
                 setorNome = setorData?.sigla || setorData?.nomeCompleto || '';
               }
             } catch (error) {
@@ -70,7 +70,7 @@ const PacientesUTI = () => {
             try {
               const leitoDoc = await getDoc(data.leitoAtualPaciente);
               if (leitoDoc.exists()) {
-                const leitoData = leitoDoc.data();
+                const leitoData = leitoDoc.data() as { codigo?: string };
                 leitoCodigo = leitoData?.codigo || '';
               }
             } catch (error) {
