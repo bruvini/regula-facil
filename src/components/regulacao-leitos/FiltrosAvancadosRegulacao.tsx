@@ -1,13 +1,21 @@
 
 import { useState, useEffect } from "react";
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
 import { useMapaLeitos } from "@/hooks/useMapaLeitos";
+
+interface IsolamentoRegulaFacil {
+  id: string;
+  nomeIsolamento: string;
+}
 
 interface FiltrosAvancadosRegulacaoProps {
   onFiltrosChange: (filtros: string[]) => void;
@@ -15,7 +23,8 @@ interface FiltrosAvancadosRegulacaoProps {
 }
 
 const FiltrosAvancadosRegulacao = ({ onFiltrosChange, filtrosAtivos }: FiltrosAvancadosRegulacaoProps) => {
-  const { setores, isolamentoTipos } = useMapaLeitos();
+  const { setores } = useMapaLeitos();
+  const [isolamentosRegulaFacil, setIsolamentosRegulaFacil] = useState<IsolamentoRegulaFacil[]>([]);
   const [sexo, setSexo] = useState("");
   const [setor, setSetor] = useState("");
   const [isolamentosSelecionados, setIsolamentosSelecionados] = useState<string[]>([]);
@@ -24,6 +33,25 @@ const FiltrosAvancadosRegulacao = ({ onFiltrosChange, filtrosAtivos }: FiltrosAv
   const [idadeMinima, setIdadeMinima] = useState("");
   const [idadeMaxima, setIdadeMaxima] = useState("");
   const [especialidade, setEspecialidade] = useState("");
+
+  // Carregar isolamentos do RegulaFacil
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'isolamentosRegulaFacil'),
+      (snapshot) => {
+        const isolamentosData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          nomeIsolamento: doc.data().nomeIsolamento || ''
+        }));
+        setIsolamentosRegulaFacil(isolamentosData);
+      },
+      (error) => {
+        console.error('Erro ao carregar isolamentos:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const especialidades = [
     "Cardiologia",
@@ -58,14 +86,16 @@ const FiltrosAvancadosRegulacao = ({ onFiltrosChange, filtrosAtivos }: FiltrosAv
     onFiltrosChange([...filtrosAtivos.filter(f => !f.includes(':')), ...novosFiltros]);
   };
 
-  const adicionarIsolamento = (isolamentoId: string) => {
-    if (!isolamentosSelecionados.includes(isolamentoId)) {
-      setIsolamentosSelecionados([...isolamentosSelecionados, isolamentoId]);
+  const handleIsolamentoToggle = (nomeIsolamento: string) => {
+    if (isolamentosSelecionados.includes(nomeIsolamento)) {
+      setIsolamentosSelecionados(isolamentosSelecionados.filter(iso => iso !== nomeIsolamento));
+    } else {
+      setIsolamentosSelecionados([...isolamentosSelecionados, nomeIsolamento]);
     }
   };
 
-  const removerIsolamento = (isolamentoId: string) => {
-    setIsolamentosSelecionados(isolamentosSelecionados.filter(id => id !== isolamentoId));
+  const removerIsolamento = (nomeIsolamento: string) => {
+    setIsolamentosSelecionados(isolamentosSelecionados.filter(iso => iso !== nomeIsolamento));
   };
 
   return (
@@ -157,47 +187,44 @@ const FiltrosAvancadosRegulacao = ({ onFiltrosChange, filtrosAtivos }: FiltrosAv
               />
             </div>
           </div>
-
-          {/* Isolamento */}
-          <div className="space-y-2">
-            <Label>Isolamento</Label>
-            <Select onValueChange={adicionarIsolamento}>
-              <SelectTrigger>
-                <SelectValue placeholder="Adicionar isolamento" />
-              </SelectTrigger>
-              <SelectContent>
-                {isolamentoTipos
-                  .filter(tipo => !isolamentosSelecionados.includes(tipo.id))
-                  .map((tipo) => (
-                    <SelectItem key={tipo.id} value={tipo.id}>
-                      {tipo.tipo}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
-        {/* Isolamentos selecionados */}
-        {isolamentosSelecionados.length > 0 && (
-          <div className="mb-4">
-            <Label className="text-sm text-muted-foreground">Isolamentos selecionados:</Label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {isolamentosSelecionados.map((isolamentoId) => {
-                const isolamento = isolamentoTipos.find(t => t.id === isolamentoId);
-                return (
-                  <Badge key={isolamentoId} variant="secondary">
-                    {isolamento?.tipo}
+        {/* Isolamentos */}
+        <div className="space-y-2 mb-4">
+          <Label>Isolamentos</Label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {isolamentosRegulaFacil.map((isolamento) => (
+              <div key={isolamento.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`isolamento-${isolamento.id}`}
+                  checked={isolamentosSelecionados.includes(isolamento.nomeIsolamento)}
+                  onCheckedChange={() => handleIsolamentoToggle(isolamento.nomeIsolamento)}
+                />
+                <Label htmlFor={`isolamento-${isolamento.id}`} className="text-sm font-normal">
+                  {isolamento.nomeIsolamento}
+                </Label>
+              </div>
+            ))}
+          </div>
+
+          {/* Isolamentos selecionados */}
+          {isolamentosSelecionados.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Isolamentos selecionados:</Label>
+              <div className="flex flex-wrap gap-2">
+                {isolamentosSelecionados.map((nomeIsolamento, index) => (
+                  <Badge key={index} variant="secondary">
+                    {nomeIsolamento}
                     <X 
                       className="h-3 w-3 ml-1 cursor-pointer" 
-                      onClick={() => removerIsolamento(isolamentoId)}
+                      onClick={() => removerIsolamento(nomeIsolamento)}
                     />
                   </Badge>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <Button onClick={aplicarFiltros} className="w-full">
           Aplicar Filtros Avançados

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -42,7 +41,7 @@ interface AlertaCCIH {
 const AlertasCCIH = () => {
   const [alertas, setAlertas] = useState<AlertaCCIH[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false); // Changed to start collapsed
   const { toast } = useToast();
 
   // Função para extrair número do quarto do leito

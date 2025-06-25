@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc, addDoc, Timestamp, query, where, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, addDoc, Timestamp, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -19,6 +19,7 @@ interface RegraLiberacao {
 interface IsolamentoRegulaFacil {
   id: string;
   nomeIsolamento: string;
+  agrupamentoRegras?: 'E' | 'OU';
   regrasLiberacaoIsolamento?: RegraLiberacao[];
 }
 
@@ -43,7 +44,6 @@ const PacientesVigilancia = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Carregar isolamentos da coleção regulaFacil
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, 'isolamentosRegulaFacil'),
@@ -62,7 +62,6 @@ const PacientesVigilancia = () => {
     return () => unsubscribe();
   }, []);
 
-  // Carregar pacientes internados com isolamentos ativos
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, 'pacientesRegulaFacil'),
@@ -100,7 +99,6 @@ const PacientesVigilancia = () => {
     return () => unsubscribe();
   }, []);
 
-  // Carregar estados dos checkboxes do Firestore
   useEffect(() => {
     if (pacientes.length > 0) {
       const carregarRegrasChecadas = async () => {
@@ -133,7 +131,6 @@ const PacientesVigilancia = () => {
     }
   }, [pacientes]);
 
-  // Salvar estados dos checkboxes no Firestore
   const salvarRegrasChecadas = async (pacienteId: string, nomeIsolamento: string, novasRegras: {[key: string]: boolean}) => {
     try {
       const pacienteRef = doc(db, 'pacientesRegulaFacil', pacienteId);
@@ -168,6 +165,11 @@ const PacientesVigilancia = () => {
     return isolamento?.regrasLiberacaoIsolamento || [];
   };
 
+  const obterAgrupamentoRegras = (nomeIsolamento: string): 'E' | 'OU' => {
+    const isolamento = isolamentosRegulaFacil.find(iso => iso.nomeIsolamento === nomeIsolamento);
+    return isolamento?.agrupamentoRegras || 'E';
+  };
+
   const gerarChaveRegra = (pacienteId: string, nomeIsolamento: string, indiceRegra: number) => {
     return `${pacienteId}_${nomeIsolamento}_${indiceRegra}`;
   };
@@ -189,17 +191,16 @@ const PacientesVigilancia = () => {
   const verificarRegrasAtendidas = (pacienteId: string, nomeIsolamento: string, regras: RegraLiberacao[]): boolean => {
     if (regras.length === 0) return true;
 
-    // Verificar se há pelo menos uma regra "OU"
-    const temRegraOU = regras.some(regra => regra.operadorLogico === 'OU');
+    const agrupamento = obterAgrupamentoRegras(nomeIsolamento);
     
-    if (temRegraOU) {
-      // Se há regras "OU", basta uma estar marcada
+    if (agrupamento === 'OU') {
+      // Se é agrupamento "OU", basta uma regra estar marcada
       return regras.some((regra, index) => {
         const chaveRegra = gerarChaveRegra(pacienteId, nomeIsolamento, index);
         return regrasChecadas[chaveRegra] === true;
       });
     } else {
-      // Se só há regras "E" (ou sem operador), todas devem estar marcadas
+      // Se é agrupamento "E", todas as regras devem estar marcadas
       return regras.every((regra, index) => {
         const chaveRegra = gerarChaveRegra(pacienteId, nomeIsolamento, index);
         return regrasChecadas[chaveRegra] === true;
@@ -222,19 +223,16 @@ const PacientesVigilancia = () => {
       const regras = obterRegrasIsolamento(nomeIsolamento);
       const regrasCumpridas = obterRegrasCumpridas(pacienteId, nomeIsolamento, regras);
 
-      // Remover o isolamento específico do array
       const isolamentosAtualizados = paciente.isolamentosAtivos.filter(
         iso => iso.nomeIsolamento !== nomeIsolamento
       );
 
-      // Atualizar o documento do paciente
       const pacienteRef = doc(db, 'pacientesRegulaFacil', pacienteId);
       await updateDoc(pacienteRef, {
         isolamentosAtivos: isolamentosAtualizados,
-        [`regrasChecadas_${nomeIsolamento}`]: null // Limpar regras salvas
+        [`regrasChecadas_${nomeIsolamento}`]: null
       });
 
-      // Registrar log de movimentação detalhado
       const descricaoLog = `Paciente ${nomePaciente} teve o isolamento ${nomeIsolamento} removido em ${new Date().toLocaleString('pt-BR')}. Regras cumpridas: ${regrasCumpridas.length > 0 ? regrasCumpridas.join(', ') : 'Nenhuma regra específica'}.`;
 
       await addDoc(collection(db, 'movimentacoesRegulaFacil'), {
@@ -246,7 +244,6 @@ const PacientesVigilancia = () => {
         dataHora: Timestamp.now()
       });
 
-      // Limpar regras checadas para este isolamento do estado local
       const novasRegras = { ...regrasChecadas };
       regras.forEach((_, index) => {
         const chaveRegra = gerarChaveRegra(pacienteId, nomeIsolamento, index);
@@ -329,7 +326,7 @@ const PacientesVigilancia = () => {
                     {paciente.isolamentosAtivos.map((isolamento, index) => {
                       const regras = obterRegrasIsolamento(isolamento.nomeIsolamento);
                       const regrasAtendidas = verificarRegrasAtendidas(paciente.id, isolamento.nomeIsolamento, regras);
-                      const temRegraOU = regras.some(regra => regra.operadorLogico === 'OU');
+                      const agrupamento = obterAgrupamentoRegras(isolamento.nomeIsolamento);
                       
                       return (
                         <div key={index} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -377,7 +374,6 @@ const PacientesVigilancia = () => {
                             </AlertDialog>
                           </div>
 
-                          {/* Regras de Liberação */}
                           {regras.length > 0 && (
                             <div className="space-y-3">
                               <div className="flex items-center gap-2 mb-2">
@@ -390,11 +386,9 @@ const PacientesVigilancia = () => {
                                   <span className="text-sm font-medium">
                                     Regras de Liberação {regrasAtendidas ? '(Atendidas)' : '(Pendentes)'}
                                   </span>
-                                  {temRegraOU && (
-                                    <Badge variant="secondary" className="text-xs ml-2">
-                                      Lógica OU: basta uma regra
-                                    </Badge>
-                                  )}
+                                  <Badge variant="secondary" className="text-xs ml-2">
+                                    Lógica {agrupamento}: {agrupamento === 'OU' ? 'basta uma regra' : 'todas as regras'}
+                                  </Badge>
                                 </div>
                               </div>
                               
@@ -424,13 +418,13 @@ const PacientesVigilancia = () => {
                                         </div>
                                       </div>
                                       
-                                      {regraIndex < regras.length - 1 && regra.operadorLogico && (
+                                      {regraIndex < regras.length - 1 && (
                                         <div className="text-center">
                                           <Badge 
-                                            variant={regra.operadorLogico === 'OU' ? 'secondary' : 'outline'}
+                                            variant="outline"
                                             className="text-xs"
                                           >
-                                            {regra.operadorLogico}
+                                            {agrupamento}
                                           </Badge>
                                         </div>
                                       )}
