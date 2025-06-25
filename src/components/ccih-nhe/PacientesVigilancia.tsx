@@ -100,18 +100,51 @@ const PacientesVigilancia = () => {
     return () => unsubscribe();
   }, []);
 
-  // Carregar estados dos checkboxes do localStorage
+  // Carregar estados dos checkboxes do Firestore
   useEffect(() => {
-    const regrasStorage = localStorage.getItem('regrasLiberacaoChecadas');
-    if (regrasStorage) {
-      setRegrasChecadas(JSON.parse(regrasStorage));
+    if (pacientes.length > 0) {
+      const carregarRegrasChecadas = async () => {
+        const regrasCarregadas: {[key: string]: boolean} = {};
+        
+        for (const paciente of pacientes) {
+          for (const isolamento of paciente.isolamentosAtivos) {
+            try {
+              const pacienteRef = doc(db, 'pacientesRegulaFacil', paciente.id);
+              const pacienteDoc = await pacienteRef.get();
+              
+              if (pacienteDoc.exists()) {
+                const dados = pacienteDoc.data();
+                const regrasStorage = dados[`regrasChecadas_${isolamento.nomeIsolamento}`];
+                
+                if (regrasStorage) {
+                  Object.assign(regrasCarregadas, regrasStorage);
+                }
+              }
+            } catch (error) {
+              console.error('Erro ao carregar regras checadas:', error);
+            }
+          }
+        }
+        
+        setRegrasChecadas(regrasCarregadas);
+      };
+      
+      carregarRegrasChecadas();
     }
-  }, []);
+  }, [pacientes]);
 
-  // Salvar estados dos checkboxes no localStorage
-  const salvarRegrasChecadas = (novasRegras: {[key: string]: boolean}) => {
-    setRegrasChecadas(novasRegras);
-    localStorage.setItem('regrasLiberacaoChecadas', JSON.stringify(novasRegras));
+  // Salvar estados dos checkboxes no Firestore
+  const salvarRegrasChecadas = async (pacienteId: string, nomeIsolamento: string, novasRegras: {[key: string]: boolean}) => {
+    try {
+      const pacienteRef = doc(db, 'pacientesRegulaFacil', pacienteId);
+      await updateDoc(pacienteRef, {
+        [`regrasChecadas_${nomeIsolamento}`]: novasRegras
+      });
+      
+      setRegrasChecadas(prevRegras => ({ ...prevRegras, ...novasRegras }));
+    } catch (error) {
+      console.error('Erro ao salvar regras checadas:', error);
+    }
   };
 
   const calcularTempoIsolamento = (dataInclusao: any) => {
@@ -139,36 +172,39 @@ const PacientesVigilancia = () => {
     return `${pacienteId}_${nomeIsolamento}_${indiceRegra}`;
   };
 
-  const handleToggleRegra = (chaveRegra: string, checked: boolean) => {
+  const handleToggleRegra = async (pacienteId: string, nomeIsolamento: string, chaveRegra: string, checked: boolean) => {
+    const regras = obterRegrasIsolamento(nomeIsolamento);
     const novasRegras = { ...regrasChecadas, [chaveRegra]: checked };
-    salvarRegrasChecadas(novasRegras);
+    
+    // Criar objeto com apenas as regras deste isolamento para salvar no Firestore
+    const regrasIsolamento: {[key: string]: boolean} = {};
+    regras.forEach((_, index) => {
+      const chave = gerarChaveRegra(pacienteId, nomeIsolamento, index);
+      regrasIsolamento[chave] = novasRegras[chave] || false;
+    });
+    
+    await salvarRegrasChecadas(pacienteId, nomeIsolamento, regrasIsolamento);
   };
 
   const verificarRegrasAtendidas = (pacienteId: string, nomeIsolamento: string, regras: RegraLiberacao[]): boolean => {
     if (regras.length === 0) return true;
 
-    // Agrupar regras por operador lógico
-    const grupos: RegraLiberacao[][] = [];
-    let grupoAtual: RegraLiberacao[] = [];
-
-    regras.forEach((regra, index) => {
-      grupoAtual.push(regra);
-      
-      // Se é a última regra ou se a próxima regra começa um novo grupo "OU"
-      if (index === regras.length - 1 || regras[index + 1]?.operadorLogico === 'OU') {
-        grupos.push([...grupoAtual]);
-        grupoAtual = [];
-      }
-    });
-
-    // Verificar cada grupo
-    return grupos.some(grupo => {
-      // Para cada grupo, todas as regras devem estar marcadas (lógica "E" implícita dentro do grupo)
-      return grupo.every((regra, index) => {
-        const chaveRegra = gerarChaveRegra(pacienteId, nomeIsolamento, regras.indexOf(regra));
+    // Verificar se há pelo menos uma regra "OU"
+    const temRegraOU = regras.some(regra => regra.operadorLogico === 'OU');
+    
+    if (temRegraOU) {
+      // Se há regras "OU", basta uma estar marcada
+      return regras.some((regra, index) => {
+        const chaveRegra = gerarChaveRegra(pacienteId, nomeIsolamento, index);
         return regrasChecadas[chaveRegra] === true;
       });
-    });
+    } else {
+      // Se só há regras "E" (ou sem operador), todas devem estar marcadas
+      return regras.every((regra, index) => {
+        const chaveRegra = gerarChaveRegra(pacienteId, nomeIsolamento, index);
+        return regrasChecadas[chaveRegra] === true;
+      });
+    }
   };
 
   const obterRegrasCumpridas = (pacienteId: string, nomeIsolamento: string, regras: RegraLiberacao[]): string[] => {
@@ -194,7 +230,8 @@ const PacientesVigilancia = () => {
       // Atualizar o documento do paciente
       const pacienteRef = doc(db, 'pacientesRegulaFacil', pacienteId);
       await updateDoc(pacienteRef, {
-        isolamentosAtivos: isolamentosAtualizados
+        isolamentosAtivos: isolamentosAtualizados,
+        [`regrasChecadas_${nomeIsolamento}`]: null // Limpar regras salvas
       });
 
       // Registrar log de movimentação detalhado
@@ -209,13 +246,13 @@ const PacientesVigilancia = () => {
         dataHora: Timestamp.now()
       });
 
-      // Limpar regras checadas para este isolamento
+      // Limpar regras checadas para este isolamento do estado local
       const novasRegras = { ...regrasChecadas };
       regras.forEach((_, index) => {
         const chaveRegra = gerarChaveRegra(pacienteId, nomeIsolamento, index);
         delete novasRegras[chaveRegra];
       });
-      salvarRegrasChecadas(novasRegras);
+      setRegrasChecadas(novasRegras);
 
       toast({
         title: "Isolamento removido",
@@ -292,6 +329,7 @@ const PacientesVigilancia = () => {
                     {paciente.isolamentosAtivos.map((isolamento, index) => {
                       const regras = obterRegrasIsolamento(isolamento.nomeIsolamento);
                       const regrasAtendidas = verificarRegrasAtendidas(paciente.id, isolamento.nomeIsolamento, regras);
+                      const temRegraOU = regras.some(regra => regra.operadorLogico === 'OU');
                       
                       return (
                         <div key={index} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -352,6 +390,11 @@ const PacientesVigilancia = () => {
                                   <span className="text-sm font-medium">
                                     Regras de Liberação {regrasAtendidas ? '(Atendidas)' : '(Pendentes)'}
                                   </span>
+                                  {temRegraOU && (
+                                    <Badge variant="secondary" className="text-xs ml-2">
+                                      Lógica OU: basta uma regra
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
                               
@@ -366,7 +409,9 @@ const PacientesVigilancia = () => {
                                         <Checkbox
                                           id={chaveRegra}
                                           checked={isChecked}
-                                          onCheckedChange={(checked) => handleToggleRegra(chaveRegra, checked as boolean)}
+                                          onCheckedChange={(checked) => 
+                                            handleToggleRegra(paciente.id, isolamento.nomeIsolamento, chaveRegra, checked as boolean)
+                                          }
                                           className="mt-1"
                                         />
                                         <div className="flex-1">

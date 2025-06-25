@@ -5,7 +5,8 @@ import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Copy } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AlertTriangle, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Isolamento {
@@ -41,6 +42,7 @@ interface AlertaCCIH {
 const AlertasCCIH = () => {
   const [alertas, setAlertas] = useState<AlertaCCIH[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(true);
   const { toast } = useToast();
 
   // Função para extrair número do quarto do leito
@@ -168,10 +170,11 @@ const AlertasCCIH = () => {
   // Função para copiar texto do alerta
   const copiarTextoAlerta = (alerta: AlertaCCIH) => {
     const isolamentosTexto = alerta.paciente.isolamentosAtivos
-      .map(iso => `- ${iso.nomeIsolamento}`)
+      .map(iso => `- *${iso.nomeIsolamento}*`)
       .join('\n');
 
-    const textoAlerta = `*ALERTA DE REMANEJAMENTO*
+    const textoAlerta = `⚠️ *ALERTA DE REMANEJAMENTO*
+
 Paciente ${alerta.paciente.nomePaciente}, localizado em ${alerta.setorNome} - ${alerta.paciente.leitoAtualPaciente}, está com os seguintes isolamentos:
 ${isolamentosTexto}
 
@@ -206,58 +209,71 @@ Data do alerta: ${new Date().toLocaleString('pt-BR')}`;
 
   return (
     <Card className="border-red-200 bg-red-50/50">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between text-red-800">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            Alertas CCIH/NHE
-          </div>
-          <Badge variant="destructive" className="bg-red-100 text-red-800">
-            {alertas.length}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {alertas.map((alerta) => (
-          <div key={alerta.id} className="p-4 bg-white rounded-lg border border-red-200">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <div className="font-medium text-lg mb-1 text-red-900">
-                  {alerta.paciente.nomePaciente}
-                </div>
-                <div className="text-sm text-red-700 mb-2">
-                  {alerta.setorNome} - Leito {alerta.paciente.leitoAtualPaciente}
-                </div>
-                <div className="text-sm text-red-600">
-                  Quarto {alerta.quarto} - Risco de contaminação cruzada
-                </div>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer hover:bg-red-100/50 transition-colors">
+            <CardTitle className="flex items-center justify-between text-red-800">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Alertas CCIH/NHE
+                <Badge variant="destructive" className="bg-red-100 text-red-800">
+                  {alertas.length}
+                </Badge>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copiarTextoAlerta(alerta)}
-                className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
-              >
-                <Copy className="h-4 w-4 mr-1" />
-                Copiar Alerta
-              </Button>
+              {isOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </CardTitle>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {alertas.map((alerta) => (
+                <div key={alerta.id} className="p-4 bg-white rounded-lg border border-red-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="font-medium text-base mb-1 text-red-900">
+                        {alerta.paciente.nomePaciente}
+                      </div>
+                      <div className="text-sm text-red-700 mb-2">
+                        {alerta.setorNome} - Leito {alerta.paciente.leitoAtualPaciente}
+                      </div>
+                      <div className="text-sm text-red-600">
+                        Quarto {alerta.quarto} - Risco de contaminação cruzada
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copiarTextoAlerta(alerta)}
+                      className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 shrink-0"
+                    >
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copiar Alerta
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-red-800">
+                      Isolamentos Ativos:
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {alerta.paciente.isolamentosAtivos.map((isolamento, index) => (
+                        <Badge key={index} variant="outline" className="border-red-300 text-red-700">
+                          {isolamento.nomeIsolamento}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            
-            <div className="space-y-2">
-              <div className="text-sm font-medium text-red-800">
-                Isolamentos Ativos:
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {alerta.paciente.isolamentosAtivos.map((isolamento, index) => (
-                  <Badge key={index} variant="outline" className="border-red-300 text-red-700">
-                    {isolamento.nomeIsolamento}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
-      </CardContent>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 };
