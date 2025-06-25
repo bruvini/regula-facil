@@ -14,8 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 interface Paciente {
   id: string;
   nomePaciente: string;
-  leitoAtualPaciente: any;
-  setorAtualPaciente: any;
+  leitoAtualPaciente: string;
+  setorAtualPaciente: string;
   isolamentosAtivos?: any[];
 }
 
@@ -23,6 +23,16 @@ interface Isolamento {
   id: string;
   nomeIsolamento: string;
   descricaoIsolamento?: string;
+}
+
+interface LeitoData {
+  codigo?: string;
+  [key: string]: any;
+}
+
+interface SetorData {
+  sigla?: string;
+  [key: string]: any;
 }
 
 interface ModalIncluirIsolamentoProps {
@@ -55,21 +65,23 @@ const ModalIncluirIsolamento = ({ open, onOpenChange }: ModalIncluirIsolamentoPr
           snapshot.docs.map(async (pacienteDoc) => {
             const pacienteData = pacienteDoc.data();
 
-            // Buscar dados do leito e setor
+            // Buscar dados do leito e setor com tipagem adequada
             let leitoInfo = '';
             let setorInfo = '';
 
             if (pacienteData.leitoAtualPaciente) {
               const leitoDoc = await getDoc(pacienteData.leitoAtualPaciente);
               if (leitoDoc.exists()) {
-                leitoInfo = leitoDoc.data()?.codigo || '';
+                const leitoData = leitoDoc.data() as LeitoData;
+                leitoInfo = leitoData?.codigo || '';
               }
             }
 
             if (pacienteData.setorAtualPaciente) {
               const setorDoc = await getDoc(pacienteData.setorAtualPaciente);
               if (setorDoc.exists()) {
-                setorInfo = setorDoc.data()?.sigla || '';
+                const setorData = setorDoc.data() as SetorData;
+                setorInfo = setorData?.sigla || '';
               }
             }
 
