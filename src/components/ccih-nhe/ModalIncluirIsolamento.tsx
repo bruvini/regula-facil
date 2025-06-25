@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -65,23 +64,47 @@ const ModalIncluirIsolamento = ({ open, onOpenChange }: ModalIncluirIsolamentoPr
           snapshot.docs.map(async (pacienteDoc) => {
             const pacienteData = pacienteDoc.data();
 
-            // Buscar dados do leito e setor com tipagem adequada
+            // Buscar dados do leito e setor - verificar se são referencias ou strings
             let leitoInfo = '';
             let setorInfo = '';
 
+            // Verificar se leitoAtualPaciente é uma referência ou string
             if (pacienteData.leitoAtualPaciente) {
-              const leitoDoc = await getDoc(pacienteData.leitoAtualPaciente);
-              if (leitoDoc.exists()) {
-                const leitoData = leitoDoc.data() as LeitoData;
-                leitoInfo = leitoData?.codigo || '';
+              if (typeof pacienteData.leitoAtualPaciente === 'string') {
+                // Se for string, usar diretamente
+                leitoInfo = pacienteData.leitoAtualPaciente;
+              } else {
+                // Se for DocumentReference, buscar os dados
+                try {
+                  const leitoDoc = await getDoc(pacienteData.leitoAtualPaciente);
+                  if (leitoDoc.exists()) {
+                    const leitoData = leitoDoc.data() as LeitoData;
+                    leitoInfo = leitoData?.codigo || '';
+                  }
+                } catch (error) {
+                  console.error('Erro ao buscar dados do leito:', error);
+                  leitoInfo = 'Leito não identificado';
+                }
               }
             }
 
+            // Verificar se setorAtualPaciente é uma referência ou string
             if (pacienteData.setorAtualPaciente) {
-              const setorDoc = await getDoc(pacienteData.setorAtualPaciente);
-              if (setorDoc.exists()) {
-                const setorData = setorDoc.data() as SetorData;
-                setorInfo = setorData?.sigla || '';
+              if (typeof pacienteData.setorAtualPaciente === 'string') {
+                // Se for string, usar diretamente
+                setorInfo = pacienteData.setorAtualPaciente;
+              } else {
+                // Se for DocumentReference, buscar os dados
+                try {
+                  const setorDoc = await getDoc(pacienteData.setorAtualPaciente);
+                  if (setorDoc.exists()) {
+                    const setorData = setorDoc.data() as SetorData;
+                    setorInfo = setorData?.sigla || '';
+                  }
+                } catch (error) {
+                  console.error('Erro ao buscar dados do setor:', error);
+                  setorInfo = 'Setor não identificado';
+                }
               }
             }
 

@@ -8,6 +8,7 @@ import { Search, Shield, Users, AlertTriangle, Eye, Settings, Plus, Activity } f
 import { useState } from "react";
 import ModalGerenciarIsolamentos from "@/components/ccih-nhe/ModalGerenciarIsolamentos";
 import ModalIncluirIsolamento from "@/components/ccih-nhe/ModalIncluirIsolamento";
+import MultiSelectIsolamentos from "@/components/ccih-nhe/MultiSelectIsolamentos";
 
 const CCIHNHE = () => {
   const [busca, setBusca] = useState("");
@@ -95,7 +96,7 @@ const CCIHNHE = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-end">
               {/* Busca */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Buscar</label>
@@ -125,6 +126,15 @@ const CCIHNHE = () => {
                 </Select>
               </div>
 
+              {/* Tipos de Isolamento */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tipos de Isolamento</label>
+                <MultiSelectIsolamentos
+                  selectedIsolamentos={isolamentosSelecionados}
+                  onSelectionChange={setIsolamentosSelecionados}
+                />
+              </div>
+
               {/* Botões de Ação */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Ações</label>
@@ -146,23 +156,6 @@ const CCIHNHE = () => {
                     Incluir em Isolamento
                   </Button>
                 </div>
-              </div>
-            </div>
-
-            {/* Isolamentos Multi-select */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tipos de Isolamento</label>
-              <div className="flex flex-wrap gap-2">
-                {isolamentosDisponiveis.map((isolamento) => (
-                  <Badge
-                    key={isolamento.id}
-                    variant={isolamentosSelecionados.includes(isolamento.id) ? "default" : "outline"}
-                    className="cursor-pointer transition-colors hover:bg-primary/80"
-                    onClick={() => toggleIsolamento(isolamento.id)}
-                  >
-                    {isolamento.tipo}
-                  </Badge>
-                ))}
               </div>
             </div>
           </CardContent>
