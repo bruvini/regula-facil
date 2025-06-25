@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import { Settings } from "lucide-react";
 import BlocoUsuarios from "@/components/configuracoes/BlocoUsuarios";
 import BlocoPCP from "@/components/configuracoes/BlocoPCP";
+import BlocoResetBanco from "@/components/configuracoes/BlocoResetBanco";
 
 const Configuracoes = () => {
   return (
@@ -19,6 +20,9 @@ const Configuracoes = () => {
 
         {/* Bloco de PCP */}
         <BlocoPCP />
+
+        {/* Bloco de Reset do Banco de Dados */}
+        <BlocoResetBanco />
       </div>
     </Layout>
   );

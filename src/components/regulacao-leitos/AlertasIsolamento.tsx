@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { AlertTriangle, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, Clock, ChevronDown, ChevronUp, Users } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
 interface Isolamento {
@@ -21,6 +21,7 @@ interface PacienteFirestore {
   leitoAtualPaciente: string;
   statusInternacao: string;
   isolamentosAtivos: Isolamento[];
+  sexoPaciente?: string;
 }
 
 interface PacienteAlerta {
@@ -29,6 +30,7 @@ interface PacienteAlerta {
   setorAtualPaciente: string;
   leitoAtualPaciente: string;
   isolamentosAtivos: Isolamento[];
+  sexoPaciente?: string;
 }
 
 interface AlertaRegulacao {
@@ -38,6 +40,10 @@ interface AlertaRegulacao {
   quarto: string;
   setorNome: string;
   tempoEspera: string;
+  sugestaoAgrupamento?: {
+    pacienteCompativel: PacienteAlerta;
+    motivoCompatibilidade: string;
+  };
 }
 
 const AlertasIsolamento = () => {
@@ -45,6 +51,17 @@ const AlertasIsolamento = () => {
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
+
+  const setoresExcluidos = [
+    'SALA DE EMERGENCIA',
+    'UTI',
+    'CC - SALAS CIRURGICAS',
+    'CC - PRE OPERATORIO',
+    'UNID. DE AVC - INTEGRAL',
+    'SALA LARANJA',
+    'UNID. AVC AGUDO',
+    'CC - RECUPERAÇÃO'
+  ];
 
   const extrairQuarto = (leito: string): string => {
     if (!leito) return '';
@@ -57,6 +74,12 @@ const AlertasIsolamento = () => {
     return setorLower.includes('uti') || setorLower.includes('utq');
   };
 
+  const isSetorExcluido = (setorNome: string): boolean => {
+    return setoresExcluidos.some(setor => 
+      setorNome.toLowerCase().includes(setor.toLowerCase())
+    );
+  };
+
   const isolamentosSaoIguais = (isolamentos1: Isolamento[], isolamentos2: Isolamento[]): boolean => {
     if (isolamentos1.length !== isolamentos2.length) return false;
     
@@ -64,6 +87,12 @@ const AlertasIsolamento = () => {
     const nomes2 = isolamentos2.map(iso => iso.nomeIsolamento).sort();
     
     return JSON.stringify(nomes1) === JSON.stringify(nomes2);
+  };
+
+  const temIsolamentoTimo = (isolamentos: Isolamento[]): boolean => {
+    return isolamentos.some(iso => 
+      iso.nomeIsolamento.toLowerCase().includes('timo')
+    );
   };
 
   const calcularTempoEspera = (isolamentos: Isolamento[]): string => {
@@ -92,6 +121,48 @@ const AlertasIsolamento = () => {
     return `${diffHoras}h`;
   };
 
+  const encontrarAgrupamento = (paciente: PacienteAlerta, todosPacientes: PacienteFirestore[]): PacienteAlerta | null => {
+    // Ignorar pacientes sem sexo definido ou com isolamento Timo
+    if (!paciente.sexoPaciente || temIsolamentoTimo(paciente.isolamentosAtivos)) {
+      return null;
+    }
+
+    for (const outroPaciente of todosPacientes) {
+      // Verificações básicas
+      if (outroPaciente.id === paciente.id || 
+          !outroPaciente.sexoPaciente ||
+          outroPaciente.sexoPaciente !== paciente.sexoPaciente ||
+          outroPaciente.setorAtualPaciente !== paciente.setorAtualPaciente ||
+          extrairQuarto(outroPaciente.leitoAtualPaciente) === extrairQuarto(paciente.leitoAtualPaciente)) {
+        continue;
+      }
+
+      // Verificar se tem isolamentos ativos
+      if (!outroPaciente.isolamentosAtivos || outroPaciente.isolamentosAtivos.length === 0) {
+        continue;
+      }
+
+      // Verificar se não tem isolamento Timo
+      if (temIsolamentoTimo(outroPaciente.isolamentosAtivos)) {
+        continue;
+      }
+
+      // Verificar se os isolamentos são iguais
+      if (isolamentosSaoIguais(paciente.isolamentosAtivos, outroPaciente.isolamentosAtivos)) {
+        return {
+          id: outroPaciente.id,
+          nomePaciente: outroPaciente.nomePaciente,
+          setorAtualPaciente: outroPaciente.setorAtualPaciente,
+          leitoAtualPaciente: outroPaciente.leitoAtualPaciente,
+          isolamentosAtivos: outroPaciente.isolamentosAtivos,
+          sexoPaciente: outroPaciente.sexoPaciente
+        };
+      }
+    }
+
+    return null;
+  };
+
   const gerarAlertas = async (pacientes: PacienteFirestore[]) => {
     const novosAlertas: AlertaRegulacao[] = [];
     const setoresCache: {[key: string]: string} = {};
@@ -118,7 +189,7 @@ const AlertasIsolamento = () => {
         }
       }
 
-      if (isSetorUTI(setorNome)) continue;
+      if (isSetorUTI(setorNome) || isSetorExcluido(setorNome)) continue;
 
       const quartoAtual = extrairQuarto(paciente.leitoAtualPaciente);
       if (!quartoAtual) continue;
@@ -144,20 +215,35 @@ const AlertasIsolamento = () => {
       }
 
       if (temIncompatibilidade) {
-        novosAlertas.push({
+        const pacienteAlerta: PacienteAlerta = {
+          id: paciente.id,
+          nomePaciente: paciente.nomePaciente,
+          setorAtualPaciente: paciente.setorAtualPaciente,
+          leitoAtualPaciente: paciente.leitoAtualPaciente,
+          isolamentosAtivos: paciente.isolamentosAtivos,
+          sexoPaciente: paciente.sexoPaciente
+        };
+
+        // Verificar possibilidade de agrupamento
+        const pacienteCompativel = encontrarAgrupamento(pacienteAlerta, pacientes);
+
+        const alerta: AlertaRegulacao = {
           id: `alerta_${paciente.id}_${Date.now()}`,
-          paciente: {
-            id: paciente.id,
-            nomePaciente: paciente.nomePaciente,
-            setorAtualPaciente: paciente.setorAtualPaciente,
-            leitoAtualPaciente: paciente.leitoAtualPaciente,
-            isolamentosAtivos: paciente.isolamentosAtivos
-          },
+          paciente: pacienteAlerta,
           dataAlerta: new Date(),
           quarto: quartoAtual,
           setorNome,
           tempoEspera: calcularTempoEspera(paciente.isolamentosAtivos)
-        });
+        };
+
+        if (pacienteCompativel) {
+          alerta.sugestaoAgrupamento = {
+            pacienteCompativel,
+            motivoCompatibilidade: `Mesmo sexo (${paciente.sexoPaciente}) e isolamentos idênticos`
+          };
+        }
+
+        novosAlertas.push(alerta);
       }
     }
 
@@ -188,6 +274,14 @@ const AlertasIsolamento = () => {
     toast({
       title: "Funcionalidade em desenvolvimento",
       description: "O remanejamento será implementado em breve.",
+      duration: 3000
+    });
+  };
+
+  const handleSugerirAgrupamento = (alertaId: string) => {
+    toast({
+      title: "Funcionalidade em desenvolvimento",
+      description: "A sugestão de agrupamento será implementada em breve.",
       duration: 3000
     });
   };
@@ -239,27 +333,60 @@ const AlertasIsolamento = () => {
                         Aguardando remanejamento há {alerta.tempoEspera}
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleRemanejar(alerta.id)}
-                      className="text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300 shrink-0"
-                    >
-                      Remanejar
-                    </Button>
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRemanejar(alerta.id)}
+                        className="text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300"
+                      >
+                        Remanejar
+                      </Button>
+                    </div>
                   </div>
                   
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-orange-800">
-                      Isolamentos Ativos:
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-sm font-medium text-orange-800 mb-2">
+                        Isolamentos Ativos:
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {alerta.paciente.isolamentosAtivos.map((isolamento, index) => (
+                          <Badge key={index} variant="outline" className="border-orange-300 text-orange-700">
+                            {isolamento.nomeIsolamento}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {alerta.paciente.isolamentosAtivos.map((isolamento, index) => (
-                        <Badge key={index} variant="outline" className="border-orange-300 text-orange-700">
-                          {isolamento.nomeIsolamento}
-                        </Badge>
-                      ))}
-                    </div>
+
+                    {alerta.sugestaoAgrupamento && (
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-start gap-2">
+                          <Users className="h-4 w-4 text-blue-600 mt-0.5" />
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-blue-800 mb-1">
+                              Possível Agrupamento Detectado
+                            </div>
+                            <div className="text-xs text-blue-700 mb-2">
+                              Este paciente pode ser agrupado com{' '}
+                              <strong>{alerta.sugestaoAgrupamento.pacienteCompativel.nomePaciente}</strong>{' '}
+                              no mesmo quarto.
+                            </div>
+                            <div className="text-xs text-blue-600 mb-2">
+                              {alerta.sugestaoAgrupamento.motivoCompatibilidade}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSugerirAgrupamento(alerta.id)}
+                              className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
+                            >
+                              Sugerir Agrupamento
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
