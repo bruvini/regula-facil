@@ -4,6 +4,7 @@ import { Settings } from "lucide-react";
 import BlocoUsuarios from "@/components/configuracoes/BlocoUsuarios";
 import BlocoPCP from "@/components/configuracoes/BlocoPCP";
 import BlocoResetBanco from "@/components/configuracoes/BlocoResetBanco";
+import BlocoCache from "@/components/configuracoes/BlocoCache";
 
 const Configuracoes = () => {
   return (
@@ -23,6 +24,9 @@ const Configuracoes = () => {
 
         {/* Bloco de Reset do Banco de Dados */}
         <BlocoResetBanco />
+
+        {/* Bloco de Limpeza de Cache */}
+        <BlocoCache />
       </div>
     </Layout>
   );

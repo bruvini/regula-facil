@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc, query, where, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, deleteDoc, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { registrarLog } from '@/lib/logger';
 import { PacienteImportado, ResultadoImportacao, AcaoPacienteRemovido } from '@/types/importacao';
+import { getCachedCollection } from '@/lib/cache';
 
 interface ImportacaoConfirmacaoProps {
   dadosValidados: PacienteImportado[];
@@ -32,11 +33,7 @@ const ImportacaoConfirmacao = ({ dadosValidados, onVoltar, onFinalizar }: Import
       setMensagemProgresso('Identificando pacientes removidos...');
       setProgresso(10);
 
-      const pacientesSnapshot = await getDocs(collection(db, 'pacientesRegulaFacil'));
-      const pacientesExistentes = pacientesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...(doc.data() as any)
-      }));
+      const pacientesExistentes = await getCachedCollection<any>('pacientesRegulaFacil', 1000 * 60 * 5);
 
       const nomesPlanilha = dadosValidados.map(p => p.nomePaciente.toLowerCase());
       const removidos = pacientesExistentes
@@ -95,18 +92,9 @@ const ImportacaoConfirmacao = ({ dadosValidados, onVoltar, onFinalizar }: Import
       setMensagemProgresso('Carregando dados do banco...');
       setProgresso(5);
 
-      const [setoresSnapshot, leitosSnapshot, pacientesSnapshot] = await Promise.all([
-        getDocs(collection(db, 'setoresRegulaFacil')),
-        getDocs(collection(db, 'leitosRegulaFacil')),
-        getDocs(collection(db, 'pacientesRegulaFacil'))
-      ]);
-
-      const setoresDB = setoresSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const leitosDB = leitosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const pacientesExistentes = pacientesSnapshot.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data() 
-      })) as Array<{
+      const setoresDB = await getCachedCollection<any>('setoresRegulaFacil', 1000 * 60 * 60 * 24);
+      const leitosDB = await getCachedCollection<any>('leitosRegulaFacil', 1000 * 60 * 5);
+      const pacientesExistentes = await getCachedCollection<any>('pacientesRegulaFacil', 1000 * 60 * 5) as Array<{
         id: string;
         nomePaciente?: string;
         leitoAtualPaciente?: string;

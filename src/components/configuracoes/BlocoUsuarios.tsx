@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { collection, query, orderBy, getDocs, addDoc, Timestamp, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, Timestamp, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 import { registrarLog } from "@/lib/logger";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Users, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getCachedCollection } from "@/lib/cache";
 import { Usuario } from "@/types/firestore";
 import FormularioCadastroUsuario from "./FormularioCadastroUsuario";
 import FormularioEdicaoUsuario from "./FormularioEdicaoUsuario";
@@ -62,17 +63,13 @@ const BlocoUsuarios = () => {
         collection(db, "usuariosRegulaFacil"),
         orderBy("dataCadastroUsuario", "desc")
       );
-      
-      const querySnapshot = await getDocs(usuariosQuery);
-      const usuariosData: Usuario[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        usuariosData.push({
-          id: doc.id,
-          ...doc.data()
-        } as Usuario);
-      });
-      
+
+      const usuariosData = await getCachedCollection<Usuario>(
+        "usuariosRegulaFacil",
+        1000 * 60 * 60 * 12,
+        usuariosQuery
+      );
+
       setUsuarios(usuariosData);
     } catch (error) {
       console.error("Erro ao carregar usuários:", error);
