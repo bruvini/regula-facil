@@ -7,8 +7,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, AlertTriangle, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { getCachedCollection } from '@/lib/cache';
 import { PacienteImportado, ResultadoValidacao } from '@/types/importacao';
 
 interface ImportacaoValidacaoProps {
@@ -33,28 +34,16 @@ const ImportacaoValidacao = ({ dadosValidados, onVoltar, onProximaEtapa }: Impor
       setProgresso(10);
 
       // Buscar setores e leitos do banco
-      const setoresSnapshot = await getDocs(collection(db, 'setoresRegulaFacil'));
-      const setoresDB = setoresSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...(doc.data() as any)
-      }));
+      const setoresDB = await getCachedCollection<any>('setoresRegulaFacil', 1000 * 60 * 60 * 24);
 
       setProgresso(25);
-      const leitosSnapshot = await getDocs(collection(db, 'leitosRegulaFacil'));
-      const leitosDB = leitosSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...(doc.data() as any)
-      }));
+      const leitosDB = await getCachedCollection<any>('leitosRegulaFacil', 1000 * 60 * 5);
 
       setProgresso(40);
       setMensagemProgresso('Buscando pacientes existentes...');
       
       // Buscar pacientes existentes
-      const pacientesSnapshot = await getDocs(collection(db, 'pacientesRegulaFacil'));
-      const pacientesExistentes = pacientesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...(doc.data() as any)
-      }));
+      const pacientesExistentes = await getCachedCollection<any>('pacientesRegulaFacil', 1000 * 60 * 5);
 
       setProgresso(60);
       setMensagemProgresso('Validando dados da planilha...');

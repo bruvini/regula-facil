@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { collection, query, orderBy, getDocs, where, deleteDoc, doc, addDoc, Timestamp } from "firebase/firestore";
+import { collection, query, orderBy, where, deleteDoc, doc, addDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { LogSistema } from "@/types/firestore";
+import { getCachedCollection } from "@/lib/cache";
 
 const Auditoria = () => {
   const [logs, setLogs] = useState<LogSistema[]>([]);
@@ -35,16 +36,12 @@ const Auditoria = () => {
         collection(db, "logsSistemaRegulaFacil"),
         orderBy("timestamp", "desc")
       );
-      
-      const querySnapshot = await getDocs(logsQuery);
-      const logsData: LogSistema[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        logsData.push({
-          id: doc.id,
-          ...doc.data()
-        } as LogSistema);
-      });
+
+      const logsData = await getCachedCollection<LogSistema>(
+        "logsSistemaRegulaFacil",
+        1000 * 60 * 10,
+        logsQuery
+      );
       
       setLogs(logsData);
       calcularIndicadores(logsData);
