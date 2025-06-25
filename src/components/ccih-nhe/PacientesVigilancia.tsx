@@ -17,7 +17,7 @@ interface Isolamento {
 
 interface PacienteVigilancia {
   id: string;
-  nome: string;
+  nomePaciente: string;
   leitoAtual?: string;
   setorAtual?: string;
   isolamentosAtivos: Isolamento[];
@@ -39,7 +39,7 @@ const PacientesVigilancia = () => {
           if (data.isolamentosAtivos && Array.isArray(data.isolamentosAtivos) && data.isolamentosAtivos.length > 0) {
             pacientesData.push({
               id: doc.id,
-              nome: data.nome || 'Nome não informado',
+              nomePaciente: data.nomePaciente || 'Nome não informado',
               leitoAtual: data.leitoAtual || data.leitoAtualPaciente,
               setorAtual: data.setorAtual || data.setorAtualPaciente,
               isolamentosAtivos: data.isolamentosAtivos
@@ -160,7 +160,7 @@ const PacientesVigilancia = () => {
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center justify-between w-full pr-4">
                     <div className="text-left">
-                      <div className="font-medium">{paciente.nome}</div>
+                      <div className="font-medium">{paciente.nomePaciente}</div>
                       <div className="text-sm text-muted-foreground">
                         {paciente.setorAtual} - Leito {paciente.leitoAtual}
                       </div>
@@ -192,14 +192,14 @@ const PacientesVigilancia = () => {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Confirmar remoção</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Tem certeza que deseja remover o isolamento <strong>{isolamento.nomeIsolamento}</strong> do paciente <strong>{paciente.nome}</strong>?
+                                Tem certeza que deseja remover o isolamento <strong>{isolamento.nomeIsolamento}</strong> do paciente <strong>{paciente.nomePaciente}</strong>?
                                 Esta ação não pode ser desfeita.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() => removerIsolamento(paciente.id, paciente.nome, isolamento.nomeIsolamento)}
+                                onClick={() => removerIsolamento(paciente.id, paciente.nomePaciente, isolamento.nomeIsolamento)}
                                 className="bg-red-600 hover:bg-red-700"
                               >
                                 Remover Isolamento
