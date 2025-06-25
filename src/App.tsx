@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import useDynamicTitle from "./hooks/useDynamicTitle";
 import Login from "./pages/Login";
 import Inicio from "./pages/Inicio";
 import RegulacaoLeitos from "./pages/RegulacaoLeitos";
@@ -18,12 +19,18 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const TitleUpdater = () => {
+  useDynamicTitle();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <TitleUpdater />
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/inicio" element={<Inicio />} />
