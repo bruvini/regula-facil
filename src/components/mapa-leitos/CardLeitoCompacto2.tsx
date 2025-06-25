@@ -275,8 +275,17 @@ const CardLeitoCompacto = ({ leito, onAcao }: CardLeitoCompactoProps) => {
           {/* Linha 3: Paciente/Motivo */}
           <div className="min-h-[12px] text-xs">
             {leito.status === 'ocupado' && leito.pacienteData && (
-              <p className="font-medium truncate text-xs" title={leito.pacienteData.nome}>
-                {leito.pacienteData.nome}
+              <p
+                className="font-medium truncate text-xs flex items-center gap-1"
+                title={leito.pacienteData.nome}
+              >
+                {leito.pacienteData.sexo === 'M' && (
+                  <span className="text-blue-500">👨</span>
+                )}
+                {leito.pacienteData.sexo === 'F' && (
+                  <span className="text-pink-500">👩</span>
+                )}
+                <span className="truncate">{leito.pacienteData.nome}</span>
               </p>
             )}
             
