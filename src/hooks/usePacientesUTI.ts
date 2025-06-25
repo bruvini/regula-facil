@@ -55,6 +55,8 @@ export const usePacientesUTI = () => {
 
   // Carregar pacientes aguardando UTI
   useEffect(() => {
+    console.log('🔍 Iniciando busca por pacientes aguardando UTI...');
+    
     const q = query(
       collection(db, 'pacientesRegulaFacil'),
       where('aguardaUTI', '==', true)
@@ -62,9 +64,25 @@ export const usePacientesUTI = () => {
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       try {
+        console.log(`📊 Encontrados ${snapshot.docs.length} documentos com aguardaUTI === true`);
+        
+        if (snapshot.docs.length === 0) {
+          console.log('⚠️ Nenhum paciente encontrado com aguardaUTI === true');
+          setPacientesUTI([]);
+          setLoading(false);
+          return;
+        }
+
         const pacientesData = await Promise.all(
           snapshot.docs.map(async (pacienteDoc) => {
             const pacienteData = pacienteDoc.data();
+            console.log(`👤 Processando paciente: ${pacienteData.nomePaciente}`, {
+              id: pacienteDoc.id,
+              aguardaUTI: pacienteData.aguardaUTI,
+              statusInternacao: pacienteData.statusInternacao,
+              setorAtualPaciente: pacienteData.setorAtualPaciente,
+              leitoAtualPaciente: pacienteData.leitoAtualPaciente
+            });
             
             // Buscar dados do setor atual
             let setorAtual = null;
@@ -117,7 +135,7 @@ export const usePacientesUTI = () => {
               }
             }
 
-            return {
+            const pacienteProcessado = {
               id: pacienteDoc.id,
               nome: pacienteData.nomePaciente || '',
               setorAtual,
@@ -127,24 +145,29 @@ export const usePacientesUTI = () => {
               dataPedidoUTI: pacienteData.dataPedidoUTI,
               tempoEspera: calcularTempoEspera(pacienteData.dataPedidoUTI)
             };
+
+            console.log(`✅ Paciente processado:`, pacienteProcessado);
+            return pacienteProcessado;
           })
         );
 
-        const pacientesFiltrados = pacientesData.filter(
-          (p) => p.setorAtual && p.leitoAtual
-        );
-        console.log(
-          'PacientesUTI - Pacientes encontrados:',
-          pacientesFiltrados.length
-        );
-        console.log('PacientesUTI - Estado atual:', pacientesFiltrados);
-        if (pacientesFiltrados.length === 0) {
-          console.log('PacientesUTI - Query retornou:', snapshot.size, 'docs');
-        }
-        setPacientesUTI(pacientesFiltrados);
+        // Filtrar apenas pacientes que têm setor e leito atual válidos
+        const pacientesValidos = pacientesData.filter(p => {
+          const isValid = p.setorAtual && p.leitoAtual;
+          if (!isValid) {
+            console.log(`❌ Paciente ${p.nome} filtrado por falta de setor/leito:`, {
+              setorAtual: p.setorAtual,
+              leitoAtual: p.leitoAtual
+            });
+          }
+          return isValid;
+        });
+
+        console.log(`🎯 Total de pacientes válidos para UTI: ${pacientesValidos.length}`);
+        setPacientesUTI(pacientesValidos);
         setLoading(false);
       } catch (error) {
-        console.error('Erro ao carregar pacientes UTI:', error);
+        console.error('❌ Erro ao carregar pacientes UTI:', error);
         setLoading(false);
       }
     });
