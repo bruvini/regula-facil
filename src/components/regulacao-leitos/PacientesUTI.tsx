@@ -7,7 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Clock, User, ChevronDown, ChevronUp, X, Hospital } from "lucide-react";
+import { Clock, User, ChevronDown, ChevronUp, X, Hospital, RotateCcw } from "lucide-react";
+import ModalCancelarUTI from "./ModalCancelarUTI";
+import ModalInformarLeito from "./ModalInformarLeito";
+import ModalCancelarReserva from "./ModalCancelarReserva";
 
 interface Paciente {
   id: string;
@@ -18,12 +21,18 @@ interface Paciente {
   leitoAtualPaciente?: any;
   setorNome?: string;
   leitoCodigo?: string;
+  leitoDestino?: string;
+  setorDestino?: any;
 }
 
 const PacientesUTI = () => {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [modalCancelarAberto, setModalCancelarAberto] = useState(false);
+  const [modalInformarLeitoAberto, setModalInformarLeitoAberto] = useState(false);
+  const [modalCancelarReservaAberto, setModalCancelarReservaAberto] = useState(false);
+  const [pacienteSelecionado, setPacienteSelecionado] = useState<Paciente | null>(null);
 
   // Calcular tempo de espera
   const calcularTempoEspera = (dataPedido: any) => {
@@ -87,6 +96,8 @@ const PacientesUTI = () => {
             leitoAtualPaciente: data.leitoAtualPaciente,
             setorNome,
             leitoCodigo,
+            leitoDestino: data.leitoDestino,
+            setorDestino: data.setorDestino,
           } as Paciente;
         })
       );
@@ -115,14 +126,24 @@ const PacientesUTI = () => {
     return null;
   }
 
-  const handleCancelarPedido = (pacienteId: string) => {
-    // Ação será implementada posteriormente
-    console.log('Cancelar pedido UTI para paciente:', pacienteId);
+  const handleCancelarPedido = (paciente: Paciente) => {
+    setPacienteSelecionado(paciente);
+    setModalCancelarAberto(true);
   };
 
-  const handleInformarLeito = (pacienteId: string) => {
-    // Ação será implementada posteriormente
-    console.log('Informar leito para paciente:', pacienteId);
+  const handleInformarLeito = (paciente: Paciente) => {
+    setPacienteSelecionado(paciente);
+    setModalInformarLeitoAberto(true);
+  };
+
+  const handleCancelarReserva = (paciente: Paciente) => {
+    setPacienteSelecionado(paciente);
+    setModalCancelarReservaAberto(true);
+  };
+
+  const handleSucessoModal = () => {
+    // Os dados serão atualizados automaticamente pelo onSnapshot
+    console.log('Operação realizada com sucesso');
   };
 
   return (
@@ -172,14 +193,19 @@ const PacientesUTI = () => {
                           <Clock className="h-4 w-4" />
                           Aguardando há {calcularTempoEspera(paciente.dataPedidoUTI)}
                         </div>
+                        {paciente.leitoDestino && (
+                          <div className="text-sm text-green-600 mt-1 font-medium">
+                            ✅ Leito reservado
+                          </div>
+                        )}
                       </div>
-                      <div className="flex gap-2 ml-4">
+                      <div className="flex gap-2 ml-4 flex-wrap">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleCancelarPedido(paciente.id)}
+                              onClick={() => handleCancelarPedido(paciente)}
                               className="h-8 w-8 p-0 hover:bg-red-100"
                             >
                               <X className="h-4 w-4 text-red-600" />
@@ -189,21 +215,40 @@ const PacientesUTI = () => {
                             Cancelar pedido de UTI
                           </TooltipContent>
                         </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleInformarLeito(paciente.id)}
-                              className="h-8 w-8 p-0 hover:bg-green-100"
-                            >
-                              <Hospital className="h-4 w-4 text-green-600" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Informar leito recebido
-                          </TooltipContent>
-                        </Tooltip>
+                        
+                        {!paciente.leitoDestino ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleInformarLeito(paciente)}
+                                className="h-8 w-8 p-0 hover:bg-green-100"
+                              >
+                                <Hospital className="h-4 w-4 text-green-600" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Informar leito recebido
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCancelarReserva(paciente)}
+                                className="h-8 w-8 p-0 hover:bg-orange-100"
+                              >
+                                <RotateCcw className="h-4 w-4 text-orange-600" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Cancelar reserva de leito
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -213,6 +258,46 @@ const PacientesUTI = () => {
           </CollapsibleContent>
         </Collapsible>
       </Card>
+
+      {/* Modals */}
+      {pacienteSelecionado && (
+        <>
+          <ModalCancelarUTI
+            aberto={modalCancelarAberto}
+            onFechar={() => setModalCancelarAberto(false)}
+            paciente={{
+              id: pacienteSelecionado.id,
+              nomePaciente: pacienteSelecionado.nomePaciente,
+              setorNome: pacienteSelecionado.setorNome,
+              tempoEspera: calcularTempoEspera(pacienteSelecionado.dataPedidoUTI),
+              leitoDestino: pacienteSelecionado.leitoDestino,
+              setorDestino: pacienteSelecionado.setorDestino
+            }}
+            onSucesso={handleSucessoModal}
+          />
+
+          <ModalInformarLeito
+            aberto={modalInformarLeitoAberto}
+            onFechar={() => setModalInformarLeitoAberto(false)}
+            paciente={{
+              id: pacienteSelecionado.id,
+              nomePaciente: pacienteSelecionado.nomePaciente
+            }}
+            onSucesso={handleSucessoModal}
+          />
+
+          <ModalCancelarReserva
+            aberto={modalCancelarReservaAberto}
+            onFechar={() => setModalCancelarReservaAberto(false)}
+            paciente={{
+              id: pacienteSelecionado.id,
+              nomePaciente: pacienteSelecionado.nomePaciente,
+              leitoDestino: pacienteSelecionado.leitoDestino
+            }}
+            onSucesso={handleSucessoModal}
+          />
+        </>
+      )}
     </TooltipProvider>
   );
 };
