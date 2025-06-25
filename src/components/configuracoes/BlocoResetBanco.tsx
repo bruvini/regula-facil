@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { AlertTriangle, RefreshCw, Trash2 } from 'lucide-react';
-import { collection, getDocs, writeBatch, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, addDoc, serverTimestamp, query, where, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { toast as toastSonner } from '@/components/ui/sonner';
@@ -36,6 +36,57 @@ const BlocoResetBanco = () => {
     }
   };
 
+  const liberarLeitosVinculados = async (pacientes: any[]) => {
+    const leitosParaAtualizar: Array<{ leitoId: string; updates: any }> = [];
+    
+    // Identificar leitos que precisam ser liberados
+    for (const pacienteDoc of pacientes) {
+      const pacienteData = pacienteDoc.data();
+      if (pacienteData.leitoAtualPaciente) {
+        // Buscar o leito correspondente pelo código
+        const leitosQuery = query(
+          collection(db, 'leitosRegulaFacil'),
+          where('codigo', '==', pacienteData.leitoAtualPaciente)
+        );
+        
+        const leitosSnapshot = await getDocs(leitosQuery);
+        
+        if (!leitosSnapshot.empty) {
+          const leitoDoc = leitosSnapshot.docs[0];
+          leitosParaAtualizar.push({
+            leitoId: leitoDoc.id,
+            updates: {
+              status: 'vago',
+              nomePaciente: null,
+              sexoPaciente: null,
+              diagnosticoPaciente: null,
+              pacienteAtual: null,
+              dataUltimaAtualizacaoStatus: new Date()
+            }
+          });
+        }
+      }
+    }
+
+    // Atualizar os leitos em lotes
+    if (leitosParaAtualizar.length > 0) {
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < leitosParaAtualizar.length; i += BATCH_SIZE) {
+        const batchLeitos = leitosParaAtualizar.slice(i, i + BATCH_SIZE);
+        const batch = writeBatch(db);
+
+        batchLeitos.forEach(({ leitoId, updates }) => {
+          const leitoRef = doc(db, 'leitosRegulaFacil', leitoId);
+          batch.update(leitoRef, updates);
+        });
+
+        await batch.commit();
+      }
+    }
+
+    return leitosParaAtualizar.length;
+  };
+
   const confirmarReset = async () => {
     setProcessando(true);
     setProgresso(0);
@@ -45,6 +96,13 @@ const BlocoResetBanco = () => {
       const docs = snapshot.docs;
       const total = docs.length;
       let processados = 0;
+      let leitosLiberados = 0;
+
+      // Se for reset de pacientes, liberar leitos primeiro
+      if (colecaoSelecionada === 'pacientesRegulaFacil') {
+        leitosLiberados = await liberarLeitosVinculados(docs);
+        setProgresso(25); // 25% para liberação dos leitos
+      }
 
       const BATCH_SIZE = 500;
       for (let i = 0; i < docs.length; i += BATCH_SIZE) {
@@ -55,20 +113,32 @@ const BlocoResetBanco = () => {
 
         await batch.commit();
         processados += batchDocs.length;
-        setProgresso((processados / total) * 100);
+        
+        // Ajustar progresso considerando a liberação de leitos (se aplicável)
+        const baseProgress = colecaoSelecionada === 'pacientesRegulaFacil' ? 25 : 0;
+        const deleteProgress = ((processados / total) * (100 - baseProgress));
+        setProgresso(baseProgress + deleteProgress);
       }
 
       // Registrar log
+      const descricaoLog = colecaoSelecionada === 'pacientesRegulaFacil' 
+        ? `${total} documentos excluídos da coleção ${colecaoSelecionada} e ${leitosLiberados} leitos liberados`
+        : `${total} documentos excluídos da coleção ${colecaoSelecionada}`;
+
       await addDoc(collection(db, 'logsSistemaRegulaFacil'), {
         acao: 'Resetar banco de dados',
         alvo: colecaoSelecionada,
-        descricao: `${total} documentos excluídos da coleção ${colecaoSelecionada}`,
+        descricao: descricaoLog,
         pagina: 'Configurações',
         timestamp: serverTimestamp(),
         usuario: 'Sistema'
       });
 
-      toastSonner.success(`Coleção ${colecaoSelecionada} resetada com sucesso! ${total} documentos excluídos.`);
+      const mensagemSucesso = colecaoSelecionada === 'pacientesRegulaFacil'
+        ? `Coleção ${colecaoSelecionada} resetada com sucesso! ${total} documentos excluídos e ${leitosLiberados} leitos liberados.`
+        : `Coleção ${colecaoSelecionada} resetada com sucesso! ${total} documentos excluídos.`;
+
+      toastSonner.success(mensagemSucesso);
 
     } catch (error) {
       console.error('Erro ao resetar coleção:', error);
@@ -142,7 +212,9 @@ const BlocoResetBanco = () => {
             {processando ? (
               <div className="space-y-4">
                 <p className="text-sm text-gray-600">
-                  Limpando documentos... aguarde
+                  {colecaoSelecionada === 'pacientesRegulaFacil' && progresso < 25
+                    ? 'Liberando leitos vinculados...'
+                    : 'Excluindo documentos...'}
                 </p>
                 <Progress value={progresso} className="w-full" />
                 <p className="text-xs text-gray-500 text-center">
@@ -150,10 +222,18 @@ const BlocoResetBanco = () => {
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-gray-600">
-                Esta ação irá excluir <strong>{totalDocumentos}</strong> documentos da coleção{' '}
-                <strong>{colecaoSelecionada}</strong>. Esta ação é irreversível. Deseja continuar?
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">
+                  Esta ação irá excluir <strong>{totalDocumentos}</strong> documentos da coleção{' '}
+                  <strong>{colecaoSelecionada}</strong>. Esta ação é irreversível.
+                </p>
+                {colecaoSelecionada === 'pacientesRegulaFacil' && (
+                  <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                    <strong>Nota:</strong> Os leitos vinculados aos pacientes serão automaticamente liberados.
+                  </p>
+                )}
+                <p className="text-sm text-gray-600">Deseja continuar?</p>
+              </div>
             )}
           </div>
 
