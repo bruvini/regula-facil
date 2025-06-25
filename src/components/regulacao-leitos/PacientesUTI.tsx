@@ -9,43 +9,88 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock, User, MapPin, XCircle, Bed } from "lucide-react";
 import { usePacientesUTI } from "@/hooks/usePacientesUTI";
-import { useAcoesLeito } from "@/hooks/useAcoesLeito";
 import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc, Timestamp, deleteField, addDoc, collection } from "firebase/firestore";
 
 const PacientesUTI = () => {
   const { pacientesUTI, leitosUTIVagos, loading, carregarLeitosUTIVagos } = usePacientesUTI();
-  const { cancelarPedidoUTI } = useAcoesLeito();
   const { toast } = useToast();
   
   const [modalCancelamentoAberto, setModalCancelamentoAberto] = useState(false);
   const [modalTransferenciaAberto, setModalTransferenciaAberto] = useState(false);
   const [pacienteSelecionado, setPacienteSelecionado] = useState<any>(null);
-  const [motivoCancelamento, setMotivoCancelamento] = useState('');
+  const [tipoCancelamento, setTipoCancelamento] = useState('');
+  const [destinoTransferencia, setDestinoTransferencia] = useState('');
+  const [dataTransferencia, setDataTransferencia] = useState('');
+  const [motivoOutro, setMotivoOutro] = useState('');
   const [leitoSelecionado, setLeitoSelecionado] = useState('');
+  const [modalCancelarReservaAberto, setModalCancelarReservaAberto] = useState(false);
+  const [motivoCancelarReserva, setMotivoCancelarReserva] = useState('');
 
   // Só renderizar se houver pacientes aguardando UTI
   if (loading || pacientesUTI.length === 0) {
     return null;
   }
 
-  const handleCancelarPedido = (paciente: any) => {
-    setPacienteSelecionado(paciente);
-    setModalCancelamentoAberto(true);
+
+  const registrarLogMovimentacao = async (descricao: string) => {
+    try {
+      await addDoc(collection(db, 'logsMovimentacoesRegulaFacil'), {
+        descricao,
+        timestamp: Timestamp.now()
+      });
+    } catch (err) {
+      console.error('Erro ao registrar log:', err);
+    }
   };
 
   const handleConfirmarCancelamento = async () => {
-    if (pacienteSelecionado && motivoCancelamento.trim()) {
-      const sucesso = await cancelarPedidoUTI(
-        pacienteSelecionado.id,
-        pacienteSelecionado.nome,
-        motivoCancelamento
-      );
-      
-      if (sucesso) {
-        setModalCancelamentoAberto(false);
-        setMotivoCancelamento('');
-        setPacienteSelecionado(null);
+    if (!pacienteSelecionado || !tipoCancelamento) return;
+
+    try {
+      const tempo = pacienteSelecionado.tempoEspera;
+      const agora = new Date().toLocaleString('pt-BR');
+      const pacienteRef = doc(db, 'pacientesRegulaFacil', pacienteSelecionado.id);
+      const leitoAtualRef = doc(db, 'leitosRegulaFacil', pacienteSelecionado.leitoAtual.id);
+
+      let descricao = '';
+
+      if (tipoCancelamento === 'ALTA' || tipoCancelamento === 'OBITO') {
+        descricao = `Pedido de UTI cancelado para o paciente ${pacienteSelecionado.nome}, setor ${pacienteSelecionado.setorAtual.sigla}, após ${tempo} por motivo: ${tipoCancelamento === 'ALTA' ? 'Alta' : 'Óbito'} em ${agora}.`;
+        await updateDoc(leitoAtualRef, { status: 'vago', dataUltimaAtualizacaoStatus: Timestamp.now() });
+      } else if (tipoCancelamento === 'TRANSFERENCIA') {
+        descricao = `Pedido de UTI cancelado para ${pacienteSelecionado.nome} após transferência para ${destinoTransferencia} em ${dataTransferencia} após ${tempo}.`;
+        await updateDoc(leitoAtualRef, { status: 'vago', dataUltimaAtualizacaoStatus: Timestamp.now() });
+      } else {
+        descricao = `Pedido de UTI cancelado para ${pacienteSelecionado.nome} após ${tempo} por motivo: ${motivoOutro}.`;
       }
+
+      if (pacienteSelecionado.leitoDestino) {
+        const leitoDestinoRef = doc(db, 'leitosRegulaFacil', pacienteSelecionado.leitoDestino.id);
+        await updateDoc(leitoDestinoRef, { status: 'vago', dataUltimaAtualizacaoStatus: Timestamp.now() });
+        await updateDoc(pacienteRef, {
+          leitoDestino: deleteField(),
+          setorDestino: deleteField()
+        });
+      }
+
+      await updateDoc(pacienteRef, {
+        aguardaUTI: deleteField(),
+        dataPedidoUTI: deleteField()
+      });
+
+      await registrarLogMovimentacao(descricao);
+
+      setModalCancelamentoAberto(false);
+      setTipoCancelamento('');
+      setDestinoTransferencia('');
+      setDataTransferencia('');
+      setMotivoOutro('');
+      setPacienteSelecionado(null);
+    } catch (err) {
+      console.error('Erro ao cancelar pedido UTI:', err);
+      toast({ title: 'Erro ao cancelar', description: 'Não foi possível cancelar.', variant: 'destructive' });
     }
   };
 
@@ -55,16 +100,89 @@ const PacientesUTI = () => {
     setModalTransferenciaAberto(true);
   };
 
-  const handleConfirmarTransferencia = () => {
-    if (leitoSelecionado) {
-      toast({
-        title: "Transferência em desenvolvimento",
-        description: "Esta funcionalidade será implementada em breve.",
-        duration: 3000
+  const handleConfirmarTransferencia = async () => {
+    if (!pacienteSelecionado || !leitoSelecionado) return;
+
+    try {
+      const pacienteRef = doc(db, 'pacientesRegulaFacil', pacienteSelecionado.id);
+      const leitoRef = doc(db, 'leitosRegulaFacil', leitoSelecionado);
+
+      await updateDoc(pacienteRef, {
+        leitoDestino: leitoRef,
+        setorDestino: doc(db, 'setoresRegulaFacil', '7UKUgMtFvxAdCSxLmea7')
       });
+
+      await updateDoc(leitoRef, {
+        status: 'reservado',
+        dataUltimaAtualizacaoStatus: Timestamp.now()
+      });
+
+      toast({ title: 'Leito reservado', description: 'Reserva realizada com sucesso' });
+
       setModalTransferenciaAberto(false);
       setLeitoSelecionado('');
       setPacienteSelecionado(null);
+    } catch (err) {
+      console.error('Erro ao reservar leito:', err);
+      toast({ title: 'Erro', description: 'Não foi possível reservar', variant: 'destructive' });
+    }
+  };
+
+  const handleCancelarReserva = async () => {
+    if (!pacienteSelecionado || !pacienteSelecionado.leitoDestino) return;
+
+    try {
+      const pacienteRef = doc(db, 'pacientesRegulaFacil', pacienteSelecionado.id);
+      const leitoRef = doc(db, 'leitosRegulaFacil', pacienteSelecionado.leitoDestino.id);
+
+      await updateDoc(leitoRef, { status: 'vago', dataUltimaAtualizacaoStatus: Timestamp.now() });
+
+      await updateDoc(pacienteRef, {
+        leitoDestino: deleteField(),
+        setorDestino: deleteField()
+      });
+
+      await registrarLogMovimentacao(
+        `Reserva de leito ${pacienteSelecionado.leitoDestino.codigo} para paciente ${pacienteSelecionado.nome} cancelada. Motivo: ${motivoCancelarReserva}.`
+      );
+
+      setModalCancelarReservaAberto(false);
+      setMotivoCancelarReserva('');
+      setPacienteSelecionado(null);
+    } catch (err) {
+      console.error('Erro ao cancelar reserva:', err);
+      toast({ title: 'Erro', description: 'Não foi possível cancelar a reserva', variant: 'destructive' });
+    }
+  };
+
+  const handleConfirmarTransferenciaFinal = async (paciente: any) => {
+    if (!paciente || !paciente.leitoDestino) return;
+
+    try {
+      const pacienteRef = doc(db, 'pacientesRegulaFacil', paciente.id);
+      const antigoLeitoRef = doc(db, 'leitosRegulaFacil', paciente.leitoAtual.id);
+      const novoLeitoRef = doc(db, 'leitosRegulaFacil', paciente.leitoDestino.id);
+
+      await updateDoc(pacienteRef, {
+        leitoAtualPaciente: novoLeitoRef,
+        setorAtualPaciente: doc(db, 'setoresRegulaFacil', '7UKUgMtFvxAdCSxLmea7'),
+        leitoDestino: deleteField(),
+        setorDestino: deleteField(),
+        aguardaUTI: deleteField(),
+        dataPedidoUTI: deleteField()
+      });
+
+      await updateDoc(antigoLeitoRef, { status: 'limpeza', dataUltimaAtualizacaoStatus: Timestamp.now() });
+      await updateDoc(novoLeitoRef, { status: 'ocupado', dataUltimaAtualizacaoStatus: Timestamp.now() });
+
+      await registrarLogMovimentacao(
+        `Transferência para leito ${paciente.leitoDestino.codigo} confirmada para paciente ${paciente.nome} após ${paciente.tempoEspera} aguardando UTI.`
+      );
+
+      setPacienteSelecionado(null);
+    } catch (err) {
+      console.error('Erro ao confirmar transferência:', err);
+      toast({ title: 'Erro', description: 'Não foi possível confirmar', variant: 'destructive' });
     }
   };
 
@@ -118,19 +236,40 @@ const PacientesUTI = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleCancelarPedido(paciente)}
+                        onClick={() => {
+                          setPacienteSelecionado(paciente);
+                          setModalCancelamentoAberto(true);
+                        }}
                         className="text-red-600 border-red-200 hover:bg-red-50"
                       >
                         <XCircle className="w-4 h-4 mr-1" />
                         Cancelar pedido
                       </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleDarLeitoUTI(paciente)}
-                      >
-                        <Bed className="w-4 h-4 mr-1" />
-                        Dar leito na UTI
-                      </Button>
+                      {!paciente.leitoDestino ? (
+                        <Button size="sm" onClick={() => handleDarLeitoUTI(paciente)}>
+                          <Bed className="w-4 h-4 mr-1" />
+                          Dar leito na UTI
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setPacienteSelecionado(paciente);
+                              setModalCancelarReservaAberto(true);
+                            }}
+                          >
+                            Cancelar reserva
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleConfirmarTransferenciaFinal(paciente)}
+                          >
+                            Confirmar transferência
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -153,19 +292,43 @@ const PacientesUTI = () => {
             </p>
             <div className="space-y-2">
               <Label htmlFor="motivo">Motivo do cancelamento</Label>
-              <Input
-                id="motivo"
-                placeholder="Digite o motivo do cancelamento..."
-                value={motivoCancelamento}
-                onChange={(e) => setMotivoCancelamento(e.target.value)}
-              />
+              <Select value={tipoCancelamento} onValueChange={setTipoCancelamento}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALTA">Alta</SelectItem>
+                  <SelectItem value="OBITO">Óbito</SelectItem>
+                  <SelectItem value="TRANSFERENCIA">Transferência</SelectItem>
+                  <SelectItem value="OUTROS">Outros</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {tipoCancelamento === 'TRANSFERENCIA' && (
+              <div className="space-y-2">
+                <Label>Para onde foi transferido?</Label>
+                <Input value={destinoTransferencia} onChange={(e) => setDestinoTransferencia(e.target.value)} />
+                <Label>Data/Hora da transferência</Label>
+                <Input type="datetime-local" value={dataTransferencia} onChange={(e) => setDataTransferencia(e.target.value)} />
+              </div>
+            )}
+
+            {tipoCancelamento === 'OUTROS' && (
+              <div className="space-y-2">
+                <Label>Motivo</Label>
+                <Input value={motivoOutro} onChange={(e) => setMotivoOutro(e.target.value)} />
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={() => {
                   setModalCancelamentoAberto(false);
-                  setMotivoCancelamento('');
+                  setTipoCancelamento('');
+                  setDestinoTransferencia('');
+                  setDataTransferencia('');
+                  setMotivoOutro('');
                 }}
               >
                 Cancelar
@@ -173,10 +336,27 @@ const PacientesUTI = () => {
               <Button
                 variant="destructive"
                 onClick={handleConfirmarCancelamento}
-                disabled={!motivoCancelamento.trim()}
+                disabled={!tipoCancelamento || (tipoCancelamento === 'TRANSFERENCIA' && (!destinoTransferencia || !dataTransferencia)) || (tipoCancelamento === 'OUTROS' && !motivoOutro)}
               >
                 Confirmar cancelamento
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal cancelar reserva */}
+      <Dialog open={modalCancelarReservaAberto} onOpenChange={setModalCancelarReservaAberto}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar Reserva de UTI</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Qual o motivo do cancelamento da reserva?</p>
+            <Input value={motivoCancelarReserva} onChange={(e) => setMotivoCancelarReserva(e.target.value)} />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { setModalCancelarReservaAberto(false); setMotivoCancelarReserva(''); }}>Cancelar</Button>
+              <Button onClick={handleCancelarReserva} disabled={!motivoCancelarReserva.trim()}>Confirmar</Button>
             </div>
           </div>
         </DialogContent>
