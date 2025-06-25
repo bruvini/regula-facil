@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { collection, addDoc, updateDoc, doc, deleteDoc, query, where, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, deleteDoc, query, where, Timestamp, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { registrarLog } from '@/lib/logger';
 import { PacienteImportado, ResultadoImportacao, AcaoPacienteRemovido } from '@/types/importacao';
